@@ -1,0 +1,19 @@
+name: "list_files tool"
+timeout: 120
+
+setup:
+  - shell: "mkdir -p list-test-dir/sub && echo a > list-test-dir/hello.txt && echo b > list-test-dir/sub/nested.txt"
+
+steps:
+  - input: "Use the list_files tool to list all files in the list-test-dir directory with max_depth 2."
+    assertions:
+      - type: tool_used
+        tool: list_files
+      - type: response_not_empty
+      - type: response_contains
+        value: "hello.txt"
+      - type: response_contains
+        value: "nested.txt"
+
+cleanup:
+  - shell: "rm -rf list-test-dir"

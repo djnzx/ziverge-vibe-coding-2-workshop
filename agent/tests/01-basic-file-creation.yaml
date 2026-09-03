@@ -1,0 +1,20 @@
+name: "Basic file creation"
+timeout: 120
+
+setup:
+  - shell: "rm -f hello.txt"
+
+steps:
+  - input: "Create a file called hello.txt with the content 'Hello world'"
+    assertions:
+      - type: response_not_empty
+      - type: tool_used
+        tool: write_file
+      - type: file_exists
+        path: hello.txt
+      - type: file_content
+        path: hello.txt
+        contains: "Hello world"
+
+cleanup:
+  - shell: "rm -f hello.txt"

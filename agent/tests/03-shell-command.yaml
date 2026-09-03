@@ -1,0 +1,9 @@
+name: "Shell command execution"
+timeout: 120
+
+steps:
+  - input: "Use a shell command to find out what operating system this is running on, then tell me"
+    assertions:
+      - type: response_not_empty
+      - type: tool_used
+        tool: shell

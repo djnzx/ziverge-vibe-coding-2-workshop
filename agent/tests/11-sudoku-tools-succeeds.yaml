@@ -1,0 +1,18 @@
+name: "Sudoku - solving with tools succeeds"
+timeout: 180
+
+steps:
+  - input: "Solve this Sudoku puzzle by writing a Python solver script and running it. Write the verified solution to sudoku_solution.txt with 9 rows of 9 space-separated digits.\n\n2 3 1 7 . . . 4 .\n5 . . . . . . 1 .\n. 8 . 3 . . . 9 7\n1 6 . 2 9 7 . . 5\n9 . . . . . . . .\n. . 8 . . 3 . . .\n. . . 9 . 5 . . .\n. 4 . 1 7 . . . .\n8 . 5 4 3 6 . 2 ."
+    assertions:
+      - type: tool_used
+        tool: shell
+      - type: tool_used
+        tool: write_file
+      - type: file_exists
+        path: sudoku_solution.txt
+      - type: shell_output
+        command: "python3 ../verify_sudoku.py < sudoku_solution.txt"
+        equals: "VALID — correct Sudoku solution!"
+
+cleanup:
+  - shell: "rm -f sudoku_solution.txt sudoku_solver.py solve_sudoku.py solver.py"

@@ -1,0 +1,23 @@
+{
+  "name": "test-harness",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "test-agent": "./src/cli.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "run": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "yaml": "^2.7.0",
+    "chalk": "^5.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}

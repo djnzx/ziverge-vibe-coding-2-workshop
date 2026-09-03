@@ -1,0 +1,24 @@
+name: "Compact command"
+timeout: 120
+
+steps:
+  - input: "Create a file called before-compact.txt with the content 'hello'"
+    assertions:
+      - type: tool_used
+        tool: write_file
+      - type: file_exists
+        path: before-compact.txt
+
+  - input: "/compact"
+    assertions:
+      - type: response_contains
+        value: "Compacted"
+
+  - input: "What files have we worked on so far?"
+    assertions:
+      - type: response_not_empty
+      - type: response_contains
+        value: "before-compact.txt"
+
+cleanup:
+  - shell: "rm -f before-compact.txt"

@@ -1,0 +1,22 @@
+name: "Session persistence"
+timeout: 120
+
+setup:
+  - shell: "mkdir -p .test-history"
+
+steps:
+  - input: "Create a file called session-test.txt with the content 'persisted'"
+    assertions:
+      - type: response_not_empty
+      - type: tool_used
+        tool: write_file
+      - type: file_exists
+        path: session-test.txt
+  - input: "What did we just create?"
+    assertions:
+      - type: response_not_empty
+      - type: response_contains
+        value: "session-test"
+
+cleanup:
+  - shell: "rm -f session-test.txt && rm -rf .test-history"

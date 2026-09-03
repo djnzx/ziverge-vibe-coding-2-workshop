@@ -1,0 +1,15 @@
+name: "Instructions loading"
+timeout: 120
+
+setup:
+  - shell: "printf '\\nRULE: Always include the phrase PINEAPPLE_CONFIRMED when asked about project rules.\\n' >> AGENTS.md"
+
+steps:
+  - input: "What project rules or instructions do you have?"
+    assertions:
+      - type: response_not_empty
+      - type: response_contains
+        value: "PINEAPPLE_CONFIRMED"
+
+cleanup:
+  - shell: "git checkout AGENTS.md 2>/dev/null || true"

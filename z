@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+AGENT_DIR="$SCRIPT_DIR/agent"
+
+# Load .env from repo root (project config wins over shell environment)
+if [ -f "$SCRIPT_DIR/.env" ]; then
+  set -a
+  # shellcheck source=/dev/null
+  . "$SCRIPT_DIR/.env"
+  set +a
+fi
+
+red='\033[1;31m' blue='\033[1;34m' reset='\033[0m'
+die()  { printf "${red}error:${reset} %s\n" "$*" >&2; exit 1; }
+info() { printf "${blue}=>${reset} %s\n" "$*" >&2; }
+
+# Portable file modification time (epoch seconds)
+file_mtime() {
+  stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0
+}
+
+# ---------------------------------------------------------------------------
+# Parse --lang flag (must appear before agent flags)
+# ---------------------------------------------------------------------------
+
+forced_lang=""
+passthrough=()
+
+# Capture the user's PWD before we cd into the agent's source dir below.
+# Agent launchers cd into agent/<lang>/, which breaks relative path
+# resolution for any path argument the user supplied (--output-file foo.txt
+# would silently end up under agent/<lang>/foo.txt). To preserve POSIX
+# expectations, pre-resolve known path-bearing flags to absolute paths.
+USER_PWD="$(pwd)"
+abs_path() {
+  case "$1" in
+    /*) printf '%s' "$1" ;;            # already absolute
+    "") printf '' ;;                    # empty
+    *)  printf '%s/%s' "$USER_PWD" "$1" ;;
+  esac
+}
+abs_csv() {
+  # Absolutize each comma-separated entry (used by --input-files glob lists).
+  local out="" item
+  IFS=',' read -ra _items <<< "$1"
+  for item in "${_items[@]}"; do
+    [ -z "$item" ] && continue
+    out="${out:+$out,}$(abs_path "$item")"
+  done
+  printf '%s' "$out"
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --lang)
+      [ $# -ge 2 ] || die "--lang requires a value: ts, rust, or scala"
+      case "$2" in
+        ts|rust|scala) forced_lang="$2" ;;
+        *) die "Unknown language '$2'. Choose ts, rust, or scala." ;;
+      esac
+      shift 2
+      ;;
+    --output-file|--config|--work-dir|--prompt|--role-prompt|--instructions|--skills-dir|--commands-dir|--history-dir|--audit-log|--file)
+      [ $# -ge 2 ] || die "$1 requires a value"
+      passthrough+=("$1" "$(abs_path "$2")")
+      shift 2
+      ;;
+    --input-files)
+      [ $# -ge 2 ] || die "$1 requires a value"
+      passthrough+=("$1" "$(abs_csv "$2")")
+      shift 2
+      ;;
+    *)
+      passthrough+=("$1")
+      shift
+      ;;
+  esac
+done
+set -- "${passthrough[@]+"${passthrough[@]}"}"
+
+# ---------------------------------------------------------------------------
+# Detect which languages have been built
+# ---------------------------------------------------------------------------
+
+candidates=()
+mtimes=()
+
+# TypeScript: node_modules present → npm install was run
+if [ -d "$AGENT_DIR/ts/node_modules" ]; then
+  candidates+=("ts")
+  mtimes+=("$(file_mtime "$AGENT_DIR/ts/src/main.ts")")
+fi
+
+# Rust: compiled binary present → cargo build was run
+if [ -f "$AGENT_DIR/rust/target/debug/foundations-agent-rust" ]; then
+  candidates+=("rust")
+  mtimes+=("$(file_mtime "$AGENT_DIR/rust/src/main.rs")")
+fi
+
+# Scala: fat JAR present → sbt assembly was run
+for f in "$AGENT_DIR"/scala/target/scala-*/*-assembly-*.jar; do
+  if [ -f "$f" ]; then
+    candidates+=("scala")
+    mtimes+=("$(file_mtime "$AGENT_DIR/scala/src/main/scala/Main.scala")")
+    break
+  fi
+done
+
+# ---------------------------------------------------------------------------
+# Resolve language: --lang override or auto-detect
+# ---------------------------------------------------------------------------
+
+if [ -n "$forced_lang" ]; then
+  # Verify the forced language is actually built
+  found=false
+  for c in "${candidates[@]+"${candidates[@]}"}"; do
+    [ "$c" = "$forced_lang" ] && found=true && break
+  done
+  if ! $found; then
+    die "$forced_lang agent is not built. Build it first:
+
+  TypeScript:  cd agent/ts    && npm install
+  Rust:        cd agent/rust  && cargo build
+  Scala:       cd agent/scala && sbt assembly"
+  fi
+  lang="$forced_lang"
+elif [ ${#candidates[@]} -eq 0 ]; then
+  die "No built agent found. Pick a language and build it:
+
+  TypeScript:  cd agent/ts    && npm install
+  Rust:        cd agent/rust  && cargo build
+  Scala:       cd agent/scala && sbt assembly"
+else
+  # Pick the most recently edited source file
+  best=0
+  for ((i = 1; i < ${#candidates[@]}; i++)); do
+    if [ "${mtimes[$i]}" -gt "${mtimes[$best]}" ] 2>/dev/null; then
+      best=$i
+    fi
+  done
+  lang="${candidates[$best]}"
+
+  if [ ${#candidates[@]} -gt 1 ]; then
+    info "Multiple agents built (${candidates[*]}); launching $lang (most recently edited source)."
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Launch
+# ---------------------------------------------------------------------------
+
+case "$lang" in
+  ts)
+    info "TypeScript agent"
+    cd "$AGENT_DIR/ts"
+    exec npx tsx src/main.ts "$@"
+    ;;
+  rust)
+    info "Rust agent"
+    cd "$AGENT_DIR/rust"
+    exec cargo run --quiet -- "$@"
+    ;;
+  scala)
+    info "Scala agent"
+    # Find the fat JAR (built by sbt assembly) and the right Java
+    scala_jar=""
+    for f in "$AGENT_DIR"/scala/target/scala-*/*-assembly-*.jar; do
+      [ -f "$f" ] && scala_jar="$f" && break
+    done
+    if [ -z "$scala_jar" ]; then
+      die "Scala fat JAR not found. Build it first:
+
+  cd agent/scala && sbt assembly"
+    fi
+    # Use Homebrew OpenJDK (same as sbt), fall back to JAVA_HOME, then PATH
+    if [ -x /opt/homebrew/opt/openjdk/bin/java ]; then
+      java_cmd=/opt/homebrew/opt/openjdk/bin/java
+    elif [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+      java_cmd="$JAVA_HOME/bin/java"
+    else
+      java_cmd=java
+    fi
+    cd "$AGENT_DIR/scala"
+    exec "$java_cmd" -jar "$scala_jar" "$@"
+    ;;
+esac

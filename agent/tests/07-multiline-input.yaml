@@ -1,0 +1,21 @@
+name: "Multiline input"
+timeout: 120
+
+steps:
+  - input: "Create a file called poem.txt with these three lines:\nRoses are red\nViolets are blue\nLLMs are useful"
+    assertions:
+      - type: response_not_empty
+      - type: file_exists
+        path: poem.txt
+      - type: file_content
+        path: poem.txt
+        contains: "Roses are red"
+      - type: file_content
+        path: poem.txt
+        contains: "Violets are blue"
+      - type: file_content
+        path: poem.txt
+        contains: "LLMs are useful"
+
+cleanup:
+  - shell: "rm -f poem.txt"

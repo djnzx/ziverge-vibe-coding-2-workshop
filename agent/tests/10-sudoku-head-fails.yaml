@@ -1,0 +1,18 @@
+name: "Sudoku - solving in head fails verification"
+timeout: 120
+
+steps:
+  - input: "Solve this Sudoku puzzle in your head — do NOT use any tools to solve it. Once you have the solution, write it to sudoku_solution.txt with 9 rows of 9 space-separated digits. No other text in the file.\n\n2 3 1 7 . . . 4 .\n5 . . . . . . 1 .\n. 8 . 3 . . . 9 7\n1 6 . 2 9 7 . . 5\n9 . . . . . . . .\n. . 8 . . 3 . . .\n. . . 9 . 5 . . .\n. 4 . 1 7 . . . .\n8 . 5 4 3 6 . 2 ."
+    assertions:
+      - type: tool_not_used
+        tool: shell
+      - type: tool_used
+        tool: write_file
+      - type: file_exists
+        path: sudoku_solution.txt
+      - type: shell_output
+        command: "python3 ../verify_sudoku.py < sudoku_solution.txt 2>&1 || true"
+        matches: "^INVALID — [1-9][0-9]* errors:"
+
+cleanup:
+  - shell: "rm -f sudoku_solution.txt"

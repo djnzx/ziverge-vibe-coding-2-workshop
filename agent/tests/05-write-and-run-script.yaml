@@ -1,0 +1,21 @@
+name: "Write and run a bash script"
+timeout: 120
+
+setup:
+  - shell: "rm -f greet.sh"
+
+steps:
+  - input: "Write a bash script called greet.sh that takes a name as the first argument and prints 'Hello, <name>!' to stdout. Make it executable."
+    assertions:
+      - type: response_not_empty
+      - type: file_exists
+        path: greet.sh
+      - type: shell_output
+        command: "bash greet.sh World"
+        equals: "Hello, World!"
+      - type: shell_output
+        command: "bash greet.sh Alice"
+        equals: "Hello, Alice!"
+
+cleanup:
+  - shell: "rm -f greet.sh"

@@ -1,0 +1,23 @@
+name: "Read file and respond"
+timeout: 120
+
+setup:
+  - shell: "rm -f data.txt"
+
+steps:
+  - input: "Create a file called data.txt containing the number 42"
+    assertions:
+      - type: tool_used
+        tool: write_file
+      - type: file_exists
+        path: data.txt
+
+  - input: "Read data.txt and tell me what number is in it"
+    assertions:
+      - type: tool_used
+        tool: read_file
+      - type: response_contains
+        value: "42"
+
+cleanup:
+  - shell: "rm -f data.txt"

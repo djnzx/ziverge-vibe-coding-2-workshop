@@ -1,0 +1,31 @@
+{
+  "name": "01-foundations",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/lib.ts",
+    "./lib": "./src/lib.ts"
+  },
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "lint": "eslint src/",
+    "build": "tsc --noEmit && eslint src/",
+    "test": "tsx --test src/*.test.ts",
+    "test:exercises": "tsx --test src/module01.exercises.test.ts"
+  },
+  "dependencies": {
+    "openai": "^4.86.0",
+    "zod": "^3.24.0",
+    "zod-to-json-schema": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.1",
+    "@typescript-eslint/parser": "^8.59.1",
+    "c8": "^11.0.0",
+    "eslint": "^10.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

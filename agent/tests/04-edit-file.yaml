@@ -1,0 +1,24 @@
+name: "Edit file"
+timeout: 120
+
+steps:
+  - input: "Create a file called config.txt with three lines: host=localhost, port=8080, debug=false"
+    assertions:
+      - type: tool_used
+        tool: write_file
+      - type: file_exists
+        path: config.txt
+
+  - input: "Edit config.txt to change port=8080 to port=9090"
+    assertions:
+      - type: tool_used
+        tool: edit_file
+      - type: file_content
+        path: config.txt
+        contains: "port=9090"
+      - type: file_content
+        path: config.txt
+        contains: "host=localhost"
+
+cleanup:
+  - shell: "rm -f config.txt"
