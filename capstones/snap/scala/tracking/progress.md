@@ -36,11 +36,14 @@ Landed 2026-09-04. `sbt "testOnly snap.Versions*"` reports `Total 67, Failed 0`
 
 ## Phase 2 — Paths and trees (§2)
 
-- [ ] `Paths.trackedPath` rejects `.snap`, empty / `.` / `..` segments, backslash, and control characters
-- [ ] `isPrefixOf` is segment-wise — `a/bc` is not under `a/b`
-- [ ] Ancestor and descendant queries §6.2 needs
-- [ ] Property: replay-shaped insertions preserve prefix-freedom
-- [ ] Mutation check: `isPrefixOf` as a plain `startsWith`
+Landed 2026-09-04. `sbt "testOnly snap.Paths*"` reports `Total 39, Failed 0`
+(24 examples in `snap.PathsTest`, 15 properties in `snap.PathsPropertyTest`).
+
+- [x] `Paths.trackedPath` rejects `.snap`, empty / `.` / `..` segments, backslash, and control characters — examples and rejection properties for each shape
+- [x] `isPrefixOf` is segment-wise — `a/bc` is not under `a/b` — example, plus transitivity and order-compatibility properties
+- [x] Ancestor and descendant queries §6.2 needs — `Paths.ancestor` / `Paths.descendants` against a `Tree`, examples only (no property yet; Phase 7 exercises them against real replay data)
+- [x] Property: replay-shaped insertions preserve prefix-freedom — a distinct-top-segment generator builds a prefix-free set, a candidate is removed against its ancestors/descendants, then inserted
+- [x] Mutation-checked: `isPrefixOf` as a plain `startsWith` fails 7 tests (the `a/bc` example plus 6 properties); `prefixFree` via sorted-adjacency instead of pairwise fails 1 dedicated example — `README.md` records both
 
 ## Phase 3 — Text and edit scripts (§4.4)
 

@@ -148,6 +148,8 @@ repository root. Recorded so far:
 | `Versions`: read the Snap-order union descending | 3 |
 | `Versions`: `compare` ignores contributors absent from the left | 7 |
 | `Versions`: `join` takes the minimum | 4 |
+| `Paths`: `isPrefixOf` as a plain `startsWith` | 7 |
+| `Paths`: `prefixFree` via sorted-adjacency instead of pairwise | 1 |
 
 One mutation **survived** and is worth recording because it is not a gap:
 dropping the explicit `.sorted` from Snap order's union changes nothing, because

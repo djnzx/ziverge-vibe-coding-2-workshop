@@ -110,6 +110,28 @@ without running anything — and that record survives `clean`. Green on the unit
 suite is necessary, not sufficient; `../verify --lang scala` is the contract
 that ships.
 
+## Context discipline
+
+**Clear between phases, never inside one.** Each phase in
+[`tracking/plan.md`](tracking/plan.md) opens with a **Start here** block naming
+the spec text to read, the modules it builds on, and the acceptance cases it
+moves, so a session can begin a phase cold. That is what makes clearing cheap.
+
+It is only safe because the durable knowledge is on disk. A phase is not
+finished until `tracking/progress.md` names its evidence and anything learned
+along the way is in the doc that owns it — which the first IRON RULE already
+requires. Write the discovery down *when you find it*, not at the end.
+
+Do not clear mid-phase. Mid-debugging especially, the live reasoning is exactly
+the part no file holds: "I assumed a test gap, wrote a case to expose it, and it
+passed too, so the mutation is equivalent" is three steps that existed only in
+context until the conclusion was written down.
+
+One caveat to hold honestly: a session entering cold follows the plan more
+literally, because it has no memory of why a step is worded as it is. It is
+likelier to implement a wrong step faithfully than to notice the spec disagrees.
+The spec outranks the plan — when they conflict, the plan is what changes.
+
 ## Non-negotiables
 
 - No `return`, `asInstanceOf`, `isInstanceOf`, or `null` — WartRemover fails the
