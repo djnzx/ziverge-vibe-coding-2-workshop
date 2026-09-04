@@ -61,15 +61,15 @@ object TerminalOutput {
   final class Real extends TerminalOutput {
     private val useColor = sys.env.get("NO_COLOR").isEmpty
 
-    private val Bold   = "[1m"
-    private val Dim    = "[2m"
-    private val Cyan   = "[36m"
-    private val Yellow = "[33m"
-    private val Green  = "[32m"
-    private val Red    = "[31m"
-    private val White  = "[37m"
-    private val Gray   = "[90m"
-    private val Reset  = "[0m"
+    private val Bold   = "\u001b[1m"
+    private val Dim    = "\u001b[2m"
+    private val Cyan   = "\u001b[36m"
+    private val Yellow = "\u001b[33m"
+    private val Green  = "\u001b[32m"
+    private val Red    = "\u001b[31m"
+    private val White  = "\u001b[37m"
+    private val Gray   = "\u001b[90m"
+    private val Reset  = "\u001b[0m"
 
     private def style(text: String, codes: String*): String =
       if (useColor) s"${codes.mkString}$text$Reset" else text

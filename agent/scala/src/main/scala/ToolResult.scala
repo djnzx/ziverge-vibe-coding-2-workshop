@@ -15,12 +15,17 @@ enum ToolResult:
   }
 
 object ToolResult {
-  // TODO — Module 01, Exercise 7. Choose the model-visible output character budget.
-  // See 01-foundations/exercises.md.
-  val MaxOutputChars = 0
+  // Module 01, Exercise 7: the model-visible output budget for a single tool result.
+  // Large enough to carry a real file or command transcript, small enough that one
+  // oversized read cannot crowd out the rest of the conversation in later turns.
+  val MaxOutputChars = 10000
 
   def truncateOutput(output: String): String =
-    // TODO — Module 01, Exercise 7. Bound output and report omitted characters.
-    // See 01-foundations/exercises.md for the contract.
-    sys.error("Module 01, Exercise 7 — see 01-foundations/exercises.md")
+    if (output.length <= MaxOutputChars) output
+    else {
+      // The omitted count is reported so the model knows it is looking at a prefix and can
+      // narrow its next read instead of assuming it saw the whole thing.
+      val omitted = output.length - MaxOutputChars
+      s"${output.take(MaxOutputChars)}\n[truncated — $omitted more chars]"
+    }
 }
