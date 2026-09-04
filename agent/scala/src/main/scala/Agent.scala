@@ -42,7 +42,7 @@ final case class Agent(
           case Some(cmd) =>
             val prompt = Exercises.executeCommand(cmd, args)
             val response =
-              provider.complete(Vector(Message.UserMessage(Content.TextContent(prompt))))
+              provider.complete(Vector(Message.User(Content.TextContent(prompt))))
             (this, StepOutcome.Custom(response))
           case None =>
             (this, StepOutcome.Unknown(name))
@@ -94,7 +94,7 @@ final case class Agent(
     val compactPrompt = loadCompactionPrompt()
       .replace("{{CONVERSATION}}", transcript)
       .replace("{{PAST_SESSIONS}}", pastSection)
-    val summary = provider.complete(Vector(Message.UserMessage(Content.TextContent(compactPrompt))))
+    val summary = provider.complete(Vector(Message.User(Content.TextContent(compactPrompt))))
     val compacted = Exercises.applyCompaction(state.conversation, summary)
     withConversation(compacted)
   }

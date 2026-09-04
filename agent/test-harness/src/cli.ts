@@ -16,17 +16,34 @@ function findJava(): string {
   return "java";
 }
 
-function findScalaJar(moduleDir: string): string {
-  const targetDir = path.join(moduleDir, "scala", "target");
-  if (!fs.existsSync(targetDir)) return "";
+function findJarInScalaVersionDirs(baseDir: string): string {
+  if (!fs.existsSync(baseDir)) return "";
 
-  const scalaVersionDirs = fs.readdirSync(targetDir).filter((d) => d.startsWith("scala-"));
+  const scalaVersionDirs = fs.readdirSync(baseDir).filter((d) => d.startsWith("scala-"));
   for (const svd of scalaVersionDirs) {
-    const files = fs.readdirSync(path.join(targetDir, svd));
-    const jar = files.find((f) => f.endsWith("-assembly-0.1.0-SNAPSHOT.jar"));
-    if (jar) return path.join(targetDir, svd, jar);
+    const svdPath = path.join(baseDir, svd);
+    const entries = fs.readdirSync(svdPath, { withFileTypes: true });
+
+    // sbt 1.x layout: target/scala-<ver>/<project>-assembly-<ver>.jar
+    const jar = entries.find((e) => e.isFile() && e.name.endsWith("-assembly-0.1.0-SNAPSHOT.jar"));
+    if (jar) return path.join(svdPath, jar.name);
+
+    // sbt 2.x layout: target/out/jvm/scala-<ver>/<project>/<project>-assembly-<ver>.jar
+    for (const projectDir of entries.filter((e) => e.isDirectory())) {
+      const projectPath = path.join(svdPath, projectDir.name);
+      const files = fs.readdirSync(projectPath);
+      const nestedJar = files.find((f) => f.endsWith("-assembly-0.1.0-SNAPSHOT.jar"));
+      if (nestedJar) return path.join(projectPath, nestedJar);
+    }
   }
   return "";
+}
+
+function findScalaJar(moduleDir: string): string {
+  const targetDir = path.join(moduleDir, "scala", "target");
+  return (
+    findJarInScalaVersionDirs(targetDir) || findJarInScalaVersionDirs(path.join(targetDir, "out", "jvm"))
+  );
 }
 
 const LANG_CONFIGS: Record<string, (moduleDir: string) => LangConfig> = {

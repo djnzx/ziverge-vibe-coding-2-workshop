@@ -7,19 +7,19 @@ import sttp.ai.openai.requests.completions.chat.message.{Content, Message}
   * place to host factories (`TurnMessage.user`, `TurnMessage.assistant`), and one home for the type
   * (`TurnMessage.scala`).
   */
-final case class TurnMessage(message: Message.UserMessage | Message.AssistantMessage) {
+final case class TurnMessage(message: Message.User | Message.Assistant) {
 
   /** Either `"user"` or `"assistant"`. */
   def role: String = message match {
-    case _: Message.UserMessage      => "user"
-    case _: Message.AssistantMessage => "assistant"
+    case _: Message.User      => "user"
+    case _: Message.Assistant => "assistant"
   }
 
   /** The textual payload of this turn. */
   def text: String = message match {
-    case Message.UserMessage(Content.TextContent(value), _) => value
-    case Message.UserMessage(value, _)                      => value.toString
-    case Message.AssistantMessage(value, _, _)              => value
+    case Message.User(Content.TextContent(value), _) => value
+    case Message.User(value, _)                      => value.toString
+    case Message.Assistant(value, _, _)              => value
   }
 }
 
@@ -27,9 +27,9 @@ object TurnMessage {
 
   /** Construct a user-text turn. */
   def user(text: String): TurnMessage =
-    TurnMessage(Message.UserMessage(Content.TextContent(text)))
+    TurnMessage(Message.User(Content.TextContent(text)))
 
   /** Construct an assistant-text turn. */
   def assistant(text: String): TurnMessage =
-    TurnMessage(Message.AssistantMessage(text))
+    TurnMessage(Message.Assistant(text))
 }

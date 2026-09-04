@@ -1,6 +1,4 @@
-ThisBuild / scalaVersion := "3.3.5"
-
-val sttpOpenAiVersion = "0.4.11"
+ThisBuild / scalaVersion := "3.9.0"
 
 lazy val root = (project in file("."))
   .settings(
@@ -23,10 +21,10 @@ lazy val root = (project in file("."))
       Wart.Null
     ),
     libraryDependencies ++= Seq(
-      "com.softwaremill.sttp.ai" %% "openai" % sttpOpenAiVersion,
-      "dev.zio" %% "zio-blocks-schema" % "0.0.34",
-      "org.jline" % "jline" % "3.27.0",
-      "org.scalameta" %% "munit" % "1.1.0" % Test
+      "com.softwaremill.sttp.ai" %% "openai" % "0.11.0",
+      "dev.zio" %% "zio-blocks-schema" % "0.0.51",
+      "org.jline" % "jline" % "4.4.2",
+      "org.scalameta" %% "munit" % "1.3.6" % Test
     ),
     testFrameworks += new TestFramework("munit.Framework")
   )

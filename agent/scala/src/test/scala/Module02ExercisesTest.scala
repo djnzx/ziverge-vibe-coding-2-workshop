@@ -721,7 +721,7 @@ class Module02Exercise09ExtractMemoriesTest extends Module02FunSuite("m02-ex09-"
 
     assertEquals(content, "- Prefers Scala 3\n- Uses immutable data\n")
     val prompt = provider.capturedMessages
-      .collectFirst { case Message.UserMessage(Content.TextContent(text), _) =>
+      .collectFirst { case Message.User(Content.TextContent(text), _) =>
         text
       }
       .getOrElse("")
@@ -736,7 +736,7 @@ class Module02Exercise09ExtractMemoriesTest extends Module02FunSuite("m02-ex09-"
     Exercises.extractMemories(provider, "User prefers Scala", "Acknowledged", dir)
 
     val prompt = provider.capturedMessages
-      .collectFirst { case Message.UserMessage(Content.TextContent(text), _) =>
+      .collectFirst { case Message.User(Content.TextContent(text), _) =>
         text
       }
       .getOrElse("")

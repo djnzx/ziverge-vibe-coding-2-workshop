@@ -7,7 +7,7 @@ final case class Conversation(
   turns: Vector[TurnMessage]
 ) {
   def toMessages: Vector[Message] =
-    Message.SystemMessage(systemPrompt) +: turns.map(_.message)
+    Message.System(systemPrompt) +: turns.map(_.message)
 
   def :+(turn: TurnMessage): Conversation = copy(turns = turns :+ turn)
 }

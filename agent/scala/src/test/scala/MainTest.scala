@@ -325,13 +325,13 @@ class CommandTest extends munit.FunSuite {
     assertEquals(result.turns.length + 1, 3)
     assertEquals(result.systemPrompt, "system prompt")
 
-    val user = result.turns(0).message.asInstanceOf[Message.UserMessage]
+    val user = result.turns(0).message.asInstanceOf[Message.User]
     assertEquals(
       user.content,
       Content.TextContent("[Context from previous conversation]\nsummary text")
     )
 
-    val assistant = result.turns(1).message.asInstanceOf[Message.AssistantMessage]
+    val assistant = result.turns(1).message.asInstanceOf[Message.Assistant]
     assert(
       assistant.content.contains("\"name\":\"message_user\"") && assistant.content
         .contains("Context loaded. How can I help?")
@@ -412,7 +412,7 @@ class CommandTest extends munit.FunSuite {
       case other                       => fail(s"expected Compacted outcome, got $other")
     }
     assertEquals(capturedMessages.length, 1)
-    assert(capturedMessages.head.isInstanceOf[Message.UserMessage])
+    assert(capturedMessages.head.isInstanceOf[Message.User])
     // Post-compaction conversation is a synthetic user/assistant pair.
     assertEquals(next.state.conversation.turns.length, 2)
   }
@@ -537,7 +537,7 @@ class AgentConfigTest extends munit.FunSuite {
     )
 
     val userTexts = turn.conversation.turns.collect {
-      case TurnMessage(Message.UserMessage(Content.TextContent(text), _)) => text
+      case TurnMessage(Message.User(Content.TextContent(text), _)) => text
     }
     assert(userTexts.exists(_.contains("Unknown tool: shell")))
   }

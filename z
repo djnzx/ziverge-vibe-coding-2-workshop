@@ -100,7 +100,9 @@ if [ -f "$AGENT_DIR/rust/target/debug/foundations-agent-rust" ]; then
 fi
 
 # Scala: fat JAR present → sbt assembly was run
-for f in "$AGENT_DIR"/scala/target/scala-*/*-assembly-*.jar; do
+# (sbt 1.x lays the jar under target/scala-<ver>/; sbt 2.x's new output
+# layout uses target/out/jvm/scala-<ver>/<project>/ instead)
+for f in "$AGENT_DIR"/scala/target/scala-*/*-assembly-*.jar "$AGENT_DIR"/scala/target/out/jvm/scala-*/*/*-assembly-*.jar; do
   if [ -f "$f" ]; then
     candidates+=("scala")
     mtimes+=("$(file_mtime "$AGENT_DIR/scala/src/main/scala/Main.scala")")
@@ -166,7 +168,7 @@ case "$lang" in
     info "Scala agent"
     # Find the fat JAR (built by sbt assembly) and the right Java
     scala_jar=""
-    for f in "$AGENT_DIR"/scala/target/scala-*/*-assembly-*.jar; do
+    for f in "$AGENT_DIR"/scala/target/scala-*/*-assembly-*.jar "$AGENT_DIR"/scala/target/out/jvm/scala-*/*/*-assembly-*.jar; do
       [ -f "$f" ] && scala_jar="$f" && break
     done
     if [ -z "$scala_jar" ]; then

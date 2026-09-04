@@ -591,7 +591,7 @@ object Exercises {
          |UNSPECIFIED if it refused or reported that it could not know.""".stripMargin
 
     val verdict = provider
-      .complete(Vector(Message.UserMessage(Content.TextContent(prompt))))
+      .complete(Vector(Message.User(Content.TextContent(prompt))))
       .trim
       .toUpperCase
 
@@ -1046,7 +1046,7 @@ object Exercises {
            |
            |---
            |$normalized""".stripMargin
-      val response = provider.complete(Vector(Message.UserMessage(Content.TextContent(prompt))))
+      val response = provider.complete(Vector(Message.User(Content.TextContent(prompt))))
       truncateSingleLine(response, maxChars)
     }
   }
@@ -1095,7 +1095,7 @@ object Exercises {
          |
          |Return one fact per line. If nothing is worth remembering, return exactly $NoMemoriesSentinel.""".stripMargin
 
-    val response = provider.complete(Vector(Message.UserMessage(Content.TextContent(prompt))))
+    val response = provider.complete(Vector(Message.User(Content.TextContent(prompt))))
 
     val facts = response.linesIterator.toVector
       .map(stripBullet)
@@ -1247,7 +1247,7 @@ object Exercises {
          |Command: $command""".stripMargin
 
     val answer = provider
-      .complete(Vector(Message.UserMessage(Content.TextContent(prompt))))
+      .complete(Vector(Message.User(Content.TextContent(prompt))))
       .trim
       .toLowerCase
 

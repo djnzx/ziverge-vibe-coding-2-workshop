@@ -170,7 +170,7 @@ class Module01Exercise03AgentLoopTest extends munit.FunSuite {
       runTurn(provider, defaultConfig, ToolRegistry.default.tools, initialMessages, "Do something")
 
     val userTexts = turn.conversation.turns.collect {
-      case TurnMessage(Message.UserMessage(Content.TextContent(text), _)) => text
+      case TurnMessage(Message.User(Content.TextContent(text), _)) => text
     }
 
     assertEquals(userTexts.count(_ == nudge), 2)
@@ -246,7 +246,7 @@ class Module01Exercise03AgentLoopTest extends munit.FunSuite {
       runTurn(provider, defaultConfig, ToolRegistry.default.tools, initialMessages, "Try deleting")
 
     val userTexts = turn.conversation.turns.collect {
-      case TurnMessage(Message.UserMessage(Content.TextContent(text), _)) => text
+      case TurnMessage(Message.User(Content.TextContent(text), _)) => text
     }
     assert(userTexts.exists(_.contains("Unknown tool: delete_file")))
     assertEquals(turn.toolCalls, Vector(ToolName.MessageUser))
@@ -269,7 +269,7 @@ class Module01Exercise03AgentLoopTest extends munit.FunSuite {
  <tool_call>{"name":"message_user","arguments":{"message":"The output was fake-output."}}</tool_call>"""
         } else {
           val lastUser = messages.reverse
-            .collectFirst { case Message.UserMessage(Content.TextContent(text), _) =>
+            .collectFirst { case Message.User(Content.TextContent(text), _) =>
               text
             }
             .getOrElse("")
@@ -310,7 +310,7 @@ class Module01Exercise03AgentLoopTest extends munit.FunSuite {
     assert(callCount >= 2, s"model should get a second chance after parse error, got $callCount")
 
     val userTexts = turn.conversation.turns.collect {
-      case TurnMessage(Message.UserMessage(Content.TextContent(text), _)) => text
+      case TurnMessage(Message.User(Content.TextContent(text), _)) => text
     }
     val parseErrorFeedback = userTexts.find(_.contains("Tool call parse error"))
 
@@ -341,7 +341,7 @@ class Module01Exercise03AgentLoopTest extends munit.FunSuite {
     )
 
     val userTexts = turn.conversation.turns.collect {
-      case TurnMessage(Message.UserMessage(Content.TextContent(text), _)) => text
+      case TurnMessage(Message.User(Content.TextContent(text), _)) => text
     }
     assert(userTexts.exists(_.contains("parse error")))
   }
@@ -454,7 +454,7 @@ class Module01Exercise05ShellTest extends munit.FunSuite {
     )
 
     val shellFeedback = turn.conversation.turns.collectFirst {
-      case TurnMessage(Message.UserMessage(Content.TextContent(text), _))
+      case TurnMessage(Message.User(Content.TextContent(text), _))
           if text.startsWith("Tool shell returned:\n") =>
         text
     }
@@ -562,7 +562,7 @@ class Module01Exercise07HardenLoopTest extends munit.FunSuite {
       )
 
     val userTexts = turn.conversation.turns.collect {
-      case TurnMessage(Message.UserMessage(Content.TextContent(text), _)) => text
+      case TurnMessage(Message.User(Content.TextContent(text), _)) => text
     }
     assert(userTexts.exists(_.contains("[truncated")))
   }
@@ -594,7 +594,7 @@ class Module01Exercise07HardenLoopTest extends munit.FunSuite {
       )
 
     val assistantMessages = turn.conversation.turns.collect {
-      case TurnMessage(Message.AssistantMessage(content, _, _)) =>
+      case TurnMessage(Message.Assistant(content, _, _)) =>
         content
     }
 
@@ -672,7 +672,7 @@ class Module01Exercise10FabricationTest extends munit.FunSuite {
     ): String = {
       messages.headOption.foreach {
         case sttp.ai.openai.requests.completions.chat.message.Message
-              .UserMessage(Content.TextContent(text), _) =>
+              .User(Content.TextContent(text), _) =>
           capturedPrompt = text
         case _ =>
       }
