@@ -28,14 +28,18 @@ enum Literal:
   case Filesize(bytes: Long)
   case Null
 
-/** Bare idents, comparison operators and a standalone `-` all surface to commands as `Lit(Literal.Str(...))`.
+/** Argument tokens retain their lexical category where command semantics require it.
   *
+  * In particular, `where` accepts only `BareIdent` for its column while `select`, `sort-by`, and `get` accept a bare identifier or a quoted string.
   * `Flag.value` covers `'--' IDENT ('=' literal)?` from the SPEC 3.1 grammar; the TypeScript `Arg` union has no slot for it. No v1 builtin uses the valued
   * form.
   */
 enum Arg:
-  case Lit(value: Literal)
-  case Flag(name: String, value: Option[Literal])
+  case BareIdent(value: String)
+  case Literal(value: tabbyshell.Literal)
+  case Operator(value: String)
+  case Dash
+  case Flag(name: String, value: Option[tabbyshell.Literal])
 
 final case class Command(name: String, args: Vector[Arg])
 final case class Pipeline(commands: Vector[Command])

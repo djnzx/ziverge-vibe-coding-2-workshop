@@ -34,7 +34,7 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
   )
 
   private val genInt: Gen[Tok] =
-    Gen.choose(-1000000L, 1000000L).map(n => Tok(n.toString, Arg.Lit(Literal.Int(n))))
+    Gen.choose(-1000000L, 1000000L).map(n => Tok(n.toString, Arg.Literal(Literal.Int(n))))
 
   private val genFloat: Gen[Tok] =
     for
@@ -42,7 +42,7 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
       frac  <- Gen.choose(0, 9999)
     yield
       val text = s"$whole.${"%04d".format(frac)}"
-      Tok(text, Arg.Lit(Literal.Float(text.toDouble)))
+      Tok(text, Arg.Literal(Literal.Float(text.toDouble)))
 
   private val genFilesize: Gen[Tok] =
     for
@@ -51,7 +51,7 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
       upper        <- Gen.oneOf(true, false)
     yield
       val rendered = if upper then unit.toUpperCase else unit
-      Tok(s"$magnitude$rendered", Arg.Lit(Literal.Filesize(magnitude * mult)))
+      Tok(s"$magnitude$rendered", Arg.Literal(Literal.Filesize(magnitude * mult)))
 
   private def escapeDoubleQuoted(s: String): String =
     s.flatMap:
@@ -69,18 +69,18 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
       .listOf(stringChar)
       .map(_.mkString)
       .map: s =>
-        Tok("\"" + escapeDoubleQuoted(s) + "\"", Arg.Lit(Literal.Str(s)))
+        Tok("\"" + escapeDoubleQuoted(s) + "\"", Arg.Literal(Literal.Str(s)))
 
   private val genKeyword: Gen[Tok] = Gen.oneOf(
-    Tok("true", Arg.Lit(Literal.Bool(true))),
-    Tok("false", Arg.Lit(Literal.Bool(false))),
-    Tok("null", Arg.Lit(Literal.Null))
+    Tok("true", Arg.Literal(Literal.Bool(true))),
+    Tok("false", Arg.Literal(Literal.Bool(false))),
+    Tok("null", Arg.Literal(Literal.Null))
   )
 
-  private val genBareArg: Gen[Tok]  = bareIdent.map(s => Tok(s, Arg.Lit(Literal.Str(s))))
+  private val genBareArg: Gen[Tok]  = bareIdent.map(s => Tok(s, Arg.BareIdent(s)))
   private val genOperator: Gen[Tok] =
-    Gen.oneOf("==", "!=", "<", "<=", ">", ">=").map(o => Tok(o, Arg.Lit(Literal.Str(o))))
-  private val genDash: Gen[Tok]      = Gen.const(Tok("-", Arg.Lit(Literal.Str("-"))))
+    Gen.oneOf("==", "!=", "<", "<=", ">", ">=").map(o => Tok(o, Arg.Operator(o)))
+  private val genDash: Gen[Tok]      = Gen.const(Tok("-", Arg.Dash))
   private val genLongFlag: Gen[Tok]  = bareIdent.map(n => Tok(s"--$n", Arg.Flag(n, None)))
   private val genShortFlag: Gen[Tok] =
     Gen.alphaChar.map(c => Tok(s"-$c", Arg.Flag(c.toString, None)))
@@ -130,24 +130,24 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
 
   property("an integer literal round-trips"):
     forAll(Gen.choose(Long.MinValue, Long.MaxValue)): (n: Long) =>
-      Parser.parse(s"x $n").map(_.commands.head.args) == Right(Vector(Arg.Lit(Literal.Int(n))))
+      Parser.parse(s"x $n").map(_.commands.head.args) == Right(Vector(Arg.Literal(Literal.Int(n))))
 
   property("a double-quoted string round-trips through escaping"):
     forAll(Gen.listOf(stringChar).map(_.mkString)): s =>
       Parser.parse("x \"" + escapeDoubleQuoted(s) + "\"").map(_.commands.head.args) ==
-        Right(Vector(Arg.Lit(Literal.Str(s))))
+        Right(Vector(Arg.Literal(Literal.Str(s))))
 
   property("a filesize literal scales its magnitude by the unit"):
     forAll(Gen.choose(0L, 1000000L), Gen.oneOf(units)): (magnitude, unit) =>
       Parser.parse(s"x $magnitude${unit._1}").map(_.commands.head.args) ==
-        Right(Vector(Arg.Lit(Literal.Filesize(magnitude * unit._2))))
+        Right(Vector(Arg.Literal(Literal.Filesize(magnitude * unit._2))))
 
   private val genLiteralTok: Gen[Tok] =
     Gen.oneOf(genInt, genFloat, genFilesize, genStr, genKeyword)
 
   private def literalOf(tok: Tok): Option[Literal] = tok.arg match
-    case Arg.Lit(l)     => Some(l)
-    case Arg.Flag(_, _) => None
+    case Arg.Literal(l) => Some(l)
+    case _              => None
 
   property("a float literal round-trips"):
     forAll(genFloat)(tok => Parser.parse(s"x ${tok.text}").map(_.commands.head.args) == Right(Vector(tok.arg)))
@@ -156,7 +156,7 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
     forAll(Gen.listOf(Gen.oneOf(Gen.alphaNumChar, Gen.oneOf(' ', '\\', 'n', 't', '"', '#', '|', '=')))): chars =>
       val raw = chars.mkString
       Parser.parse(s"x '$raw'").map(_.commands.head.args) ==
-        Right(Vector(Arg.Lit(Literal.Str(raw))))
+        Right(Vector(Arg.Literal(Literal.Str(raw))))
 
   property("a long flag carrying a literal round-trips"):
     forAll(bareIdent, genLiteralTok): (name, tok) =>
@@ -167,12 +167,12 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
     forAll(Gen.oneOf("true", "false", "null"), Gen.nonEmptyListOf(identRestChar)): (kw, tail) =>
       val ident = kw + tail.mkString
       Parser.parse(s"x $ident").map(_.commands.head.args) ==
-        Right(Vector(Arg.Lit(Literal.Str(ident))))
+        Right(Vector(Arg.BareIdent(ident)))
 
   property("a negative filesize magnitude scales like a positive one"):
     forAll(Gen.choose(-1000000L, 0L), Gen.oneOf(units)): (magnitude, unit) =>
       Parser.parse(s"x $magnitude${unit._1}").map(_.commands.head.args) ==
-        Right(Vector(Arg.Lit(Literal.Filesize(magnitude * unit._2))))
+        Right(Vector(Arg.Literal(Literal.Filesize(magnitude * unit._2))))
 
   property("an operator needs no surrounding whitespace"):
     forAll(bareIdent, genOperator, genLiteralTok): (col, op, lit) =>

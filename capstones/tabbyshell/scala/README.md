@@ -11,15 +11,25 @@ built, tested, and organised.
 | sbt        | 2.0.8   | pinned in `project/build.properties`              |
 | Scala      | 3.9.0   | `ThisBuild / scalaVersion`                        |
 | JDK        | 21+     | verified on 25 and 26                             |
-| cats-parse | 1.1.0   | tokenizer, pipeline grammar, JSON                 |
-| fansi      | 0.5.1   | every ANSI escape in SPEC §6.6                     |
-| MUnit      | 1.3.6   | example-based tests                               |
-| ScalaCheck | 1.20.0  | property-based tests, via munit-scalacheck 1.3.1  |
+| cats-parse   | 1.1.0   | tokenizer and pipeline grammar                     |
+| circe-parser | 0.14.15 | JSON AST, parser, and deterministic pretty printing |
+| fansi        | 0.5.1   | every ANSI escape in SPEC §6.6                     |
+| JLine        | 3.30.0  | interactive terminal, line editing, and history    |
+| MUnit        | 1.3.6   | example-based tests                                |
+| ScalaCheck   | 1.20.0  | property-based tests, via munit-scalacheck 1.3.1   |
 
-Production code otherwise uses only the JDK standard library. There is no JSON
-library: JSON is parsed with cats-parse and emitted by hand per SPEC §5.13. No
-escape sequence is written by hand either — fansi supplies them all, including the
-`dim` attribute (`fansi.Bold.Faint`) that §6.6 needs for borders and the index column.
+Production code otherwise uses only the JDK standard library. JSON is parsed and
+printed through Circe, but conversion between Circe's `Json` AST and TabbyShell's
+`Value` is explicit: generic derivation cannot enforce the table-promotion,
+insertion-order, and SPEC §5.13 shape rules. No escape sequence is written by hand
+either — fansi supplies them all, including the `dim` attribute (`fansi.Bold.Faint`)
+that §6.6 needs for borders and the index column.
+
+JLine is confined to `Terminal.scala` and interactive REPL startup. It supplies
+line editing, history, and typed Ctrl-C/EOF events; it does not parse TabbyShell
+input, format output, or run in `--eval` / `--eval-file` modes. The REPL receives
+terminal events through the `Terminal` abstraction so its behavior remains testable
+without a real TTY.
 
 ## Layout
 
@@ -142,6 +152,12 @@ these:
 Generators emit a token's **source text together with the `Arg` it must parse
 to**, so a whole pipeline can be generated next to its expected AST. That is
 what makes the round-trip property possible without a separate pretty-printer.
+
+Parser ASTs retain argument provenance: `BareIdent`, `Literal`, `Operator`,
+`Dash`, and `Flag` are distinct `Arg` cases. Do not flatten them into strings.
+Builtins depend on that distinction to reject `where "column" …` while accepting
+quoted columns for `select`, `sort-by`, and `get`, and to keep `cd -` distinct
+from `cd "-"`.
 
 The totality and out-of-range properties are not decoration: they caught a real
 `NumberFormatException` on `x 99999999999999999999`, which is now a parse error

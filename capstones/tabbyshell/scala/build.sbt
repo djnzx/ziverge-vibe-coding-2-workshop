@@ -28,7 +28,9 @@ lazy val root = (project in file("."))
     ),
     libraryDependencies ++= Seq(
       "org.typelevel"  %% "cats-parse"       % "1.1.0",
+      "io.circe"       %% "circe-parser"     % "0.14.16",
       "com.lihaoyi"    %% "fansi"            % "0.5.1",
+      "org.jline"       % "jline"            % "4.4.2",
       "org.scalameta"  %% "munit"            % "1.3.6"  % Test,
       "org.scalameta"  %% "munit-scalacheck" % "1.3.1"  % Test,
       "org.scalacheck" %% "scalacheck"       % "1.20.0" % Test

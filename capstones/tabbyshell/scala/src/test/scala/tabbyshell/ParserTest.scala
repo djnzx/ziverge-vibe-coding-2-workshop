@@ -5,12 +5,15 @@ class ParserTest extends munit.FunSuite:
   private def pipeline(cs: Command*): Either[ShellError, Pipeline] = Right(Pipeline(cs.toVector))
   private def cmd(name: String, args: Arg*): Command               = Command(name, args.toVector)
 
-  private def str(s: String): Arg   = Arg.Lit(Literal.Str(s))
-  private def int(n: Long): Arg     = Arg.Lit(Literal.Int(n))
-  private def flt(d: Double): Arg   = Arg.Lit(Literal.Float(d))
-  private def size(b: Long): Arg    = Arg.Lit(Literal.Filesize(b))
-  private def bool(b: Boolean): Arg = Arg.Lit(Literal.Bool(b))
-  private val nul: Arg              = Arg.Lit(Literal.Null)
+  private def bare(s: String): Arg  = Arg.BareIdent(s)
+  private def str(s: String): Arg   = Arg.Literal(Literal.Str(s))
+  private def int(n: Long): Arg     = Arg.Literal(Literal.Int(n))
+  private def flt(d: Double): Arg   = Arg.Literal(Literal.Float(d))
+  private def size(b: Long): Arg    = Arg.Literal(Literal.Filesize(b))
+  private def bool(b: Boolean): Arg = Arg.Literal(Literal.Bool(b))
+  private def op(s: String): Arg    = Arg.Operator(s)
+  private val dash: Arg             = Arg.Dash
+  private val nul: Arg              = Arg.Literal(Literal.Null)
 
   private def argsOf(input: String): Vector[Arg] =
     Parser.parse(input).fold(e => fail(e.message), _.commands.head.args)
@@ -26,14 +29,14 @@ class ParserTest extends munit.FunSuite:
   test("surrounding whitespace is ignored"):
     assertEquals(Parser.parse("   ls   |   length   "), pipeline(cmd("ls"), cmd("length")))
 
-  test("a bare-ident argument parses as a string literal"):
-    assertEquals(Parser.parse("cd subdir"), pipeline(cmd("cd", str("subdir"))))
+  test("a bare-ident argument preserves its lexical category"):
+    assertEquals(Parser.parse("cd subdir"), pipeline(cmd("cd", bare("subdir"))))
 
   test("bare idents carry path characters as one token"):
-    assertEquals(Parser.parse("open ~/notes/a.txt"), pipeline(cmd("open", str("~/notes/a.txt"))))
+    assertEquals(Parser.parse("open ~/notes/a.txt"), pipeline(cmd("open", bare("~/notes/a.txt"))))
 
   test("a hyphenated command name is a single ident"):
-    assertEquals(Parser.parse("sort-by name"), pipeline(cmd("sort-by", str("name"))))
+    assertEquals(Parser.parse("sort-by name"), pipeline(cmd("sort-by", bare("name"))))
 
   // --- numbers ---
 
@@ -94,7 +97,7 @@ class ParserTest extends munit.FunSuite:
   test("a keyword prefix does not swallow a longer bare ident"):
     assertEquals(
       argsOf("get nullish trueish falsehood"),
-      Vector(str("nullish"), str("trueish"), str("falsehood"))
+      Vector(bare("nullish"), bare("trueish"), bare("falsehood"))
     )
 
   // --- flags, operators, dash ---
@@ -109,25 +112,40 @@ class ParserTest extends munit.FunSuite:
     assertEquals(argsOf("x --width=40"), Vector(flagOf("width", Literal.Int(40))))
 
   test("a standalone dash is a string argument"):
-    assertEquals(argsOf("cd -"), Vector(str("-")))
+    assertEquals(argsOf("cd -"), Vector(dash))
 
   test("comparison operators surface as string arguments"):
     assertEquals(
       argsOf("x == != < <= > >="),
-      Vector(str("=="), str("!="), str("<"), str("<="), str(">"), str(">="))
+      Vector(op("=="), op("!="), op("<"), op("<="), op(">"), op(">="))
     )
 
   test("a where clause parses column, operator and literal"):
     assertEquals(
       Parser.parse("ls | where size > 0b"),
-      pipeline(cmd("ls"), cmd("where", str("size"), str(">"), size(0)))
+      pipeline(cmd("ls"), cmd("where", bare("size"), op(">"), size(0)))
     )
 
   test("sort-by mixes an ident argument with a flag"):
     assertEquals(
       Parser.parse("sort-by size --reverse"),
-      pipeline(cmd("sort-by", str("size"), flag("reverse")))
+      pipeline(cmd("sort-by", bare("size"), flag("reverse")))
     )
+
+  test("quoted strings remain distinct from bare identifiers"):
+    assertEquals(
+      Parser.parse("select name \"display name\""),
+      pipeline(cmd("select", bare("name"), str("display name")))
+    )
+
+  test("a quoted where column remains a literal rather than a bare identifier"):
+    assertEquals(
+      Parser.parse("where \"size\" > 0b"),
+      pipeline(cmd("where", str("size"), op(">"), size(0)))
+    )
+
+  test("a quoted dash is distinct from cd dash"):
+    assertEquals(Parser.parse("cd \"-\""), pipeline(cmd("cd", str("-"))))
 
   // --- comments and blank input ---
 
@@ -174,6 +192,30 @@ class ParserTest extends munit.FunSuite:
   test("a filesize whose byte count overflows Int64 is a parse error"):
     assert(Parser.parse("x 9223372036854775807gb").left.exists(_.message.startsWith("parse error")))
 
+  test("a filesize magnitude overflow reports the literal's own column"):
+    assertEquals(
+      Parser.parse("x 9223372036854775808b").left.map(_.message),
+      Left("parse error: unexpected '9' at column 3")
+    )
+
+  test("a scaled filesize overflow reports its literal's own column in a pipeline"):
+    assertEquals(
+      Parser.parse("ls | where size > 9223372036854775807gb").left.map(_.message),
+      Left("parse error: unexpected '9' at column 19")
+    )
+
+  test("a valued flag with no literal reports the end-of-input column"):
+    assertEquals(
+      Parser.parse("ls --limit=").left.map(_.message),
+      Left("parse error: unexpected end of input at column 12")
+    )
+
+  test("a trailing pipe reports the offending pipe column"):
+    assertEquals(
+      Parser.parse("ls |").left.map(_.message),
+      Left("parse error: unexpected '|' at column 4")
+    )
+
   private def flag(name: String): Arg                   = Arg.Flag(name, None)
   private def flagOf(name: String, value: Literal): Arg = Arg.Flag(name, Some(value))
 
@@ -213,7 +255,7 @@ class ParserTest extends munit.FunSuite:
     assertEquals(logical.size, 1)
     assertEquals(
       Parser.parse(logical.head),
-      pipeline(cmd("ls"), cmd("sort-by", str("name")), cmd("get", str("name")))
+      pipeline(cmd("ls"), cmd("sort-by", bare("name")), cmd("get", bare("name")))
     )
 
   test("a comment ends at the newline, not at the end of a continued buffer"):

@@ -5,7 +5,7 @@
 Implement the Scala TabbyShell application in this directory only. The
 behavioral source of truth is [`../../SPEC.md`](../../SPEC.md); the YAML cases
 in [`../../tests`](../../tests) are its executable conformance suite. Preserve
-the current Scala 3 / JDK / cats-parse / fansi approach unless a change is
+the current Scala 3 / JDK / cats-parse / Circe / fansi approach unless a change is
 needed by the specification, in which case update the applicable Scala docs in
 the same change.
 
@@ -65,13 +65,14 @@ argument validation is reusable, and parser tests remain green.
 
 ### 3. Implement data codecs before file-facing commands
 
-1. Add a JSON codec module using `cats-parse` for input and a deterministic
-   writer for output.
-   - Decode JSON scalars, lists, and insertion-ordered records.
+1. Add a JSON codec module using Circe's `Json` AST and parser, with an explicit
+   `Value` ↔ `Json` conversion.
+   - Decode JSON scalars, lists, and insertion-ordered records without using
+     generic codec derivation.
    - Promote an array of records to `Table` only when all records share keys in
      the same order; otherwise preserve it as `List[Record]`.
-   - Serialize every `Value` according to SPEC §5.13 with RFC 8259 string
-     escapes, two-space indentation, insertion order, and one trailing newline.
+   - Serialize every `Value` according to SPEC §5.13 via an explicit `Json`
+     mapping, Circe's two-space printer, and one trailing newline.
 2. Add an RFC 4180 CSV codec.
    - Read a header plus string-valued cells into a rectangular table.
    - Parse quoted commas, quotes, and newlines; reject malformed/ragged input
@@ -182,17 +183,29 @@ side-effect-bounded API.
 ### 9. Implement terminal, REPL, and CLI entry points
 
 0. Consider using jline for convenient input from console
-1. Add `Terminal.scala` as the narrow stdout/stderr/prompt abstraction and
-   `Repl.scala` for banner, prompts, history, line buffering, errors, and
-   goodbye behavior.
+1. Add `Terminal.scala` as a narrow JLine-backed stdout/stderr/prompt and input
+   event abstraction, and `Repl.scala` for banner, prompts, history, line
+   buffering, errors, and goodbye behavior.
    - Resolve `banner.txt` from `TABBY_PROJECT_ROOT`.
-   - Load and retain at most 1,000 entries of `~/.tabbyshell_history`.
-   - Implement short cwd rendering, line continuation, `exit`/`quit`, EOF,
-     and Ctrl-C buffer reset according to SPEC §7.
-2. Replace the `Main.scala` stub with strict command-line parsing for `--eval`,
-   `--eval-file` (including `-`), `--no-color`, `--interactive`, and
-   `--version`; reject unsupported or malformed flag combinations as user
-   errors.
+   - Configure JLine to persist history at `~/.tabbyshell_history`, retaining
+     at most 1,000 entries, and disable shell-style event expansion so it does
+     not reinterpret TabbyShell input.
+   - Translate JLine's `UserInterruptException` and `EndOfFileException` into
+     typed terminal events. Implement short cwd rendering, line continuation,
+     `exit`/`quit`, EOF, and Ctrl-C buffer reset according to SPEC §7.
+   - Keep JLine out of `--eval` and `--eval-file`; inject a fake `Terminal` in
+     REPL tests instead of requiring a real TTY.
+2. Replace the `Main.scala` stub with strict command-line parsing via the core
+   Decline library for `--eval`, `--eval-file` (including `-`), `--no-color`,
+   `--interactive`, and `--version`; reject unsupported or malformed flag
+   combinations as user errors.
+   - Add only `com.monovore %% decline`; the application has no Cats Effect
+     boundary, so do not add `decline-effect`.
+   - Use Decline's parser API rather than an auto-running `CommandApp`, keeping
+     error output, exit codes, and the deliberate absence of a `--help` flag
+     under TabbyShell control.
+   - Add a CLI regression test that `--help` is rejected, as required by
+     SPEC §10.
 3. Initialize state once at the application boundary.
    - Use absolute cwd/home paths and freeze `TABBY_NOW` when valid, otherwise
      read the system time once.

@@ -111,13 +111,16 @@ object Parser:
   // --- flags, operators, dash ---
 
   private val longFlag: P[Arg] =
-    (P.string("--") *> bareIdent ~ (P.char('=') *> literal).?).map(Arg.Flag.apply)
+    (P.string("--").backtrack *> bareIdent).flatMap: name =>
+      (P.char('=') *> literal)
+        .map(value => Arg.Flag(name, Some(value)))
+        .orElse(P.pure(Arg.Flag(name, None)))
 
   private val shortFlag: P[Arg] =
     (P.char('-') *> P.charWhere(isFlagLetter) <* tokenEnd).map(c => Arg.Flag(c.toString, None))
 
   /** A standalone `-`, as in `cd -`. */
-  private val dash: P[Arg] = (P.char('-') <* tokenEnd).as(Arg.Lit(Literal.Str("-")))
+  private val dash: P[Arg] = (P.char('-') <* tokenEnd).as(Arg.Dash)
 
   private val operator: P[Arg] = P
     .oneOf(
@@ -131,19 +134,19 @@ object Parser:
       )
     )
     .string
-    .map(s => Arg.Lit(Literal.Str(s)))
+    .map(Arg.Operator.apply)
 
   // --- grammar ---
 
   private val argT: P[Arg] = tok(
     P.oneOf(
       List(
-        longFlag.backtrack,
+        longFlag,
         shortFlag.backtrack,
         dash.backtrack,
-        literal.map(Arg.Lit.apply),
+        literal.map(Arg.Literal.apply),
         operator,
-        bareIdent.map(s => Arg.Lit(Literal.Str(s)))
+        bareIdent.map(Arg.BareIdent.apply)
       )
     )
   )

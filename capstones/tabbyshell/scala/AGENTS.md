@@ -98,16 +98,21 @@ repository root:
 
 ## Dependencies
 
-- `org.typelevel::cats-parse` — tokenizer + pipeline grammar, and the JSON
-  parser used by `open *.json` and the AI response decoder.
+- `org.typelevel::cats-parse` — tokenizer + pipeline grammar.
+- `io.circe::circe-parser` — JSON AST, parser, and pretty-printer used by
+  `open *.json`, `to json`, and the AI response decoder.
 - `com.lihaoyi::fansi` — every ANSI escape in SPEC 6.6. Nothing writes escape
   sequences by hand, in `main` or in tests.
+- `org.jline:jline` — terminal creation, line editing, persisted history, and
+  typed Ctrl-C/EOF events for the interactive REPL only.
 - `org.scalameta::munit`, `org.scalameta::munit-scalacheck`,
   `org.scalacheck::scalacheck` (test only).
 
 Everything else uses the JDK standard library (`java.nio.file`,
-`java.lang.ProcessBuilder`, `java.net.http.HttpClient`, `java.io`). No
-JSON library — parse JSON with cats-parse, emit it by hand per SPEC 5.13.
+`java.lang.ProcessBuilder`, `java.net.http.HttpClient`, `java.io`). Convert
+between `Value` and Circe's `Json` AST explicitly—do not derive a codec for the
+ADT—so table promotion, record-key order, and the SPEC §5.13 JSON shape remain
+under TabbyShell's control.
 
 ## Target file structure
 
@@ -134,7 +139,8 @@ src/main/scala/tabbyshell/
   Executor.scala    — pipeline interpreter + AI-external fallback dispatch
   Ai.scala          — OpenRouter HTTP POST + JSON response parser
   Repl.scala        — readline loop, banner, history, line continuation
-  Terminal.scala    — small abstraction for stdout/stderr/prompt
+  Terminal.scala    — JLine-backed abstraction for stdout/stderr/prompt and
+                      typed interactive-input events; REPL tests use a fake
   Contracts.scala   — public domain model (given)
   Main.scala        — CLI parsing (--eval / --eval-file / --no-color /
                       --interactive / --version)
