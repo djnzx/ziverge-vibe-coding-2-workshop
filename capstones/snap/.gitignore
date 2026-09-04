@@ -1,0 +1,6 @@
+**/node_modules/
+**/dist/
+**/target/
+**/project/project/
+test-harness/node_modules/
+*.log
