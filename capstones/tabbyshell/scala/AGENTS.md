@@ -29,11 +29,35 @@ echo "ls | first 3" | java -jar target/scala-3.9.0/tabbyshell-assembly-0.1.0.jar
 ## Test
 
 ```
-sbt test                                         # unit tests (munit)
+sbt "testOnly tabbyshell.*"                      # examples + properties
+sbt "testOnly tabbyshell.ParserTest"             # examples only
+sbt "testOnly tabbyshell.ParserPropertyTest"     # properties only
 ```
 
-The language-neutral verifier is the public test suite. From the repository
-root:
+> **`sbt test` is not the full suite here.** sbt 2.0.8 routes `test` through
+> `testQuick`, which skips suites it considers unchanged and prints
+> `No tests to run for Test / testQuick` — and that record survives `clean`.
+> Run the suite through `testOnly`, which always executes.
+
+Tests come in two flavours and both are expected:
+
+- **MUnit examples** (`*Test.scala`) — written test-first, one behavior each.
+  They pin the specific cases a reader will look up: the exact AST for
+  `ls | where size > 0b`, the exact text of an error message.
+- **ScalaCheck properties** (`*PropertyTest.scala`, extending
+  `munit.ScalaCheckSuite`) — written wherever the claim is universal rather
+  than specific. Round-trips, totality (never throws), algebraic laws
+  (`sort-by` is a stable permutation; `select` preserves row count), unit
+  scaling, and byte-exactness of `render(color = false)` are all properties.
+
+The convention that makes round-trips tractable: generators emit a token's
+**source text together with the value it must parse to**, so a pipeline can be
+generated next to its expected AST without writing a pretty-printer. See
+`ParserPropertyTest`.
+
+The language-neutral verifier is the public test suite, and is the contract
+that actually ships — a green unit suite does not imply conformance. From the
+repository root:
 
 ```
 ./capstones/tabbyshell/verify --lang scala \
@@ -44,7 +68,8 @@ root:
 
 - `org.typelevel::cats-parse` — tokenizer + pipeline grammar, and the JSON
   parser used by `open *.json` and the AI response decoder.
-- `org.scalameta::munit` (test only).
+- `org.scalameta::munit`, `org.scalameta::munit-scalacheck`,
+  `org.scalacheck::scalacheck` (test only).
 
 Everything else uses the JDK standard library (`java.nio.file`,
 `java.lang.ProcessBuilder`, `java.net.http.HttpClient`, `java.io`). No
@@ -94,3 +119,6 @@ packaged layout that path is absent and the mtime reads 0, so pass
 - Use `Vector` for the ordered sequences in `Value`; `Record` keys are an
   ordered `Vector[(String, Value)]`, never a `Map`.
 - `sbt scalafmtAll` before committing.
+- Numeric literals that do not fit `Int64` are a parse error, never a silent
+  wrap or a thrown `NumberFormatException` (SPEC 3.1). Widen through `BigInt` /
+  `BigDecimal` before narrowing.

@@ -104,6 +104,13 @@ them is `where` (§5.6).
 Numbers and filesizes both *parse* as their respective types — `5` is `Int`,
 `5b` is `Filesize`.
 
+**Out-of-range literals:** an integer literal that does not fit in 64 signed
+bits, or a filesize whose byte count (`magnitude × multiplier`) does not, is a
+`Parse` error reported at that literal's own column. Implementations must not
+wrap, saturate, or raise a host-language numeric exception — widen before
+narrowing. Float literals are *not* range-checked; they follow IEEE 754 and may
+become infinity.
+
 ### 3.2 Out of scope
 
 No variables, blocks, closures, `$in`, string interpolation, ranges, cell

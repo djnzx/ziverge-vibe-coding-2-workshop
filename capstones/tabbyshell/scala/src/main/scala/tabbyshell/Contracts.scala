@@ -13,8 +13,12 @@ enum Value:
   case Record(fields: Vector[(String, Value)])
   case Table(columns: Vector[String], rows: Vector[Vector[Value]])
 
-/** A literal argument token (SPEC 3.1). TypeScript folds Int and Float into `number`;
-  * Scala keeps them apart because `5` parses as Int and `5.0` as Float.
+/** A literal argument token (SPEC 3.1).
+  *
+  * Two deliberate departures from `ts/src/contracts.ts`, which does not cover the whole of the SPEC 3.1 grammar. Neither is observable in rendered output, so
+  * parity holds.
+  *   - TypeScript folds Int and Float into `number`; Scala keeps them apart because `5` parses as Int and `5.0` as Float.
+  *   - `literal := ... | 'null'` has no counterpart in the TypeScript union; `Null` adds it.
   */
 enum Literal:
   case Str(value: String)
@@ -22,11 +26,16 @@ enum Literal:
   case Float(value: Double)
   case Bool(value: Boolean)
   case Filesize(bytes: Long)
+  case Null
 
-/** Bare idents and comparison operators surface to commands as `Lit(Literal.Str(...))`. */
+/** Bare idents, comparison operators and a standalone `-` all surface to commands as `Lit(Literal.Str(...))`.
+  *
+  * `Flag.value` covers `'--' IDENT ('=' literal)?` from the SPEC 3.1 grammar; the TypeScript `Arg` union has no slot for it. No v1 builtin uses the valued
+  * form.
+  */
 enum Arg:
   case Lit(value: Literal)
-  case Flag(name: String)
+  case Flag(name: String, value: Option[Literal])
 
 final case class Command(name: String, args: Vector[Arg])
 final case class Pipeline(commands: Vector[Command])
