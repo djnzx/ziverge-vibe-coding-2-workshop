@@ -119,10 +119,15 @@ package (standard Java/Scala layout); tests mirror it under
 
 ```
 src/main/scala/tabbyshell/
-  Value.scala       — Value ADT smart constructors (Table rejects ragged rows)
+  Value.scala       — `object Values` smart constructors (Table rejects ragged rows)
+                      plus `typeName` / `isScalar` / `isNumeric` extensions. The
+                      constructors cannot live in a `Value` companion: a companion
+                      must share a file with its type, and the enum is in Contracts.scala.
   Parser.scala      — line-continuation pre-pass (`logicalLines`), then the
                       cats-parse tokenizer + pipeline grammar → Pipeline
-  Renderer.scala    — pure render(value, opts) -> String
+  Renderer.scala    — `RenderOpts` + pure `render(value, opts)`. The SPEC 6.3
+                      compact form is `compact()`, not `inline()` — `inline` is a
+                      Scala 3 soft keyword and cannot name a method.
   Builtins.scala    — one function per command + dispatch table
   Executor.scala    — pipeline interpreter + AI-external fallback dispatch
   Ai.scala          — OpenRouter HTTP POST + JSON response parser
@@ -155,6 +160,11 @@ packaged layout that path is absent and the mtime reads 0, so pass
 - Numeric literals that do not fit `Int64` are a parse error, never a silent
   wrap or a thrown `NumberFormatException` (SPEC 3.1). Widen through `BigInt` /
   `BigDecimal` before narrowing.
+- Format every number and date through `String.format(Locale.ROOT, ...)`. The
+  default locale would swap the decimal separator or the digits and silently
+  break the byte-exactness guarantee in SPEC 10.
+- Widen to `BigInt` / `BigDecimal` for filesize scaling and rounding: SPEC 6.5
+  wants half-away-from-zero, which is `RoundingMode.HALF_UP`, not `math.round`.
 - Split input with `Parser.logicalLines` before parsing, never on `\n` directly:
   a continued pipeline keeps its newlines, and the grammar treats `\n` as
   inter-token whitespace (SPEC 3.1). `Parser.continuesLine` is what the REPL

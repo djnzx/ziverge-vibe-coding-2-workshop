@@ -101,6 +101,22 @@ Current parser properties:
 | logical lines are complete        | no line handed to the parser still awaits a join          |
 | continued pipeline                | parses identically to the same pipeline on one line       |
 
+Renderer properties (`RendererPropertyTest`) pin *shape*, since `RendererTest` already
+pins the exact golden strings:
+
+| Property                          | Invariant                                                 |
+|-----------------------------------|-----------------------------------------------------------|
+| no escape bytes                   | colour-off output never contains ESC                      |
+| trailing newline                  | every render ends with one; only `Str` may end blank       |
+| equal line width                  | every line of a grid has the same display width           |
+| line count                        | a table renders `rows + 4` lines                          |
+| truncation                        | a capped cell is `cap-1` chars plus the ellipsis          |
+| right alignment                   | a numeric column sits flush against its padding           |
+| ISO shape                         | a date over a year old matches `YYYY-MM-DD`               |
+| filesize shape                    | always a magnitude and one of B/KB/MB/GB/TB               |
+| no scientific notation            | a float never renders as `1.0E9`                          |
+| totality                          | nested values with control characters never throw         |
+
 Totality only says the parser returns *something*. A second group says what it must
 **refuse** — a parser that accepted every input would satisfy totality and fail all of
 these:
@@ -129,7 +145,13 @@ The totality and out-of-range properties are not decoration: they caught a real
 These are checked by mutation, not taken on faith. Removing the `tokenEnd` guard from
 `Parser.scala` (so a literal may run into ident characters) is caught by 11 properties,
 4 of them rejection properties; joining continued lines without their newline is caught
-by 5; keeping the trailing empty field from the line split is caught by 2. A property suite that survives a mutation like that is
+by 5; keeping the trailing empty field from the line split is caught by 2; dropping the
+renderer's right-alignment is caught by 2, and an off-by-one in cell truncation by 2.
+
+One mutation *survived* and is worth recording, because it is not a gap: rendering the
+ISO year with `%02d` instead of `%04d` changes nothing, since the flag pads to a minimum
+width rather than truncating. It is unobservable for `ts >= 0`, which per SPEC 6.4 is the
+only domain the spec fixes — an equivalent mutant, not a missing test. A property suite that survives a mutation like that is
 not testing anything.
 
 Both techniques are written up as repository skills, and apply to the parsers still to
