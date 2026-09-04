@@ -177,13 +177,15 @@ files are exercised at the unit level against the exact scenarios they run.
 
 ## Phase 8 — Workspace and filesystem (§2, §10)
 
-- [ ] `discover` walks to the root; failure is `not a Snap repository`
-- [ ] `scan` uses `NOFOLLOW_LINKS` and rejects symlinks and FIFOs by name
-- [ ] `install` replaces blocking files, creates directories, and prunes newly empty ones
-- [ ] `writeRepository` uses a same-directory temp file and `ATOMIC_MOVE`, leaving no leftover
-- [ ] Validate-before-mutate ordering enforced for `merge` and `revert`
-- [ ] Property: `scan ∘ install == id` for generated prefix-free trees
-- [ ] Every test runs in a temporary directory; nothing reads the process cwd
+Workspace boundary landed 2026-09-05. `sbt "testOnly snap.WorkspaceTest"` reports `Total 10, Failed 0`; the full `sbt "testOnly snap.*"` suite reports `Total 261, Failed 0`. The one command-composition item remains for Phase 11, where merge and revert are introduced.
+
+- [x] `discover` walks to the root; failure is `not a Snap repository` — nested-repository and failure examples in `snap.WorkspaceTest`
+- [x] `scan` uses `NOFOLLOW_LINKS` and rejects symlinks and FIFOs by name — the two exact-message examples in `snap.WorkspaceTest`
+- [x] `install` replaces blocking files, creates directories, and prunes newly empty ones — `snap.WorkspaceTest` covers file-to-directory replacement, pruning, and preservation of `.snap/`
+- [x] `writeRepository` uses a same-directory temp file and `ATOMIC_MOVE`, leaving no leftover — `snap.WorkspaceTest` checks its parsed replacement and directory entries
+- [ ] Validate-before-mutate ordering enforced for `merge` and `revert` — Phase 11 owns the still-absent command handlers; it must compose `scan`, validation, `Replay.materialize`, `install`, then `writeRepository` in that order
+- [x] Property: `scan ∘ install == id` for generated prefix-free trees — `snap.WorkspaceTest`
+- [x] Every test runs in a temporary directory; nothing reads the process cwd — `snap.WorkspaceTest`'s shared temporary-directory fixture
 
 ## Phase 9 — Configuration (§8)
 
