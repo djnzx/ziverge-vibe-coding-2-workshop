@@ -186,13 +186,6 @@ final case class Configuration(contributorId: Option[ContributorId])
 object Configuration:
   val empty: Configuration = Configuration(None)
 
-/** SPEC §7.11 — the selected output presentation.
-  *
-  * Choosing one MUST NOT change execution, repository or filesystem effects, warning selection or order, or exit status.
-  */
-enum Presentation:
-  case Plain, Terminal
-
 /** SPEC §10 — an expected failure.
   *
   * Rendered as `snap: <detail>` in plain mode and exits 1. Unexpected internal failures exit 2 and are not modelled here: they are the ones we did not

@@ -199,16 +199,18 @@ Configuration boundary landed 2026-09-05. `sbt "testOnly snap.ConfigTest"` repor
 
 ## Phase 10 — Presentation and error rendering (§7.11, §10)
 
-- [ ] `select` implements the full `SNAP_COLOR` × `NO_COLOR` × TTY table
-- [ ] `NO_COLOR` present-but-empty selects the complete plain presentation in `auto`
-- [ ] An invalid `SNAP_COLOR` fails plain, **before** command execution
-- [ ] `s(n, text)` is the only escape-emitting function; test expectations use it
-- [ ] Goldens for every §7.11 layout family, cross-checked against `28-terminal-presentation.yaml`
-- [ ] The deleted-row symbol is U+2212 MINUS SIGN, not a hyphen
-- [ ] `--version` reports `snap 1.0.0`, held separately from `build.sbt`'s `0.1.0`
-- [ ] The `--serve` URL stays plain; `config` stays silent
-- [ ] **SPEC §11 requirement:** `auto` unit-tested for TTY and non-TTY stdout and stderr *independently* — no acceptance case can cover this
-- [ ] Property: plain-mode output contains no ESC byte
+Presentation boundary landed 2026-09-05. `sbt "testOnly snap.PresentationTest"` reports `Total 13, Failed 0`; the full `sbt "testOnly snap.*"` suite reports `Total 284, Failed 0`.
+
+- [x] `select` implements the full `SNAP_COLOR` × `NO_COLOR` × TTY table — `snap.PresentationTest`
+- [x] `NO_COLOR` present-but-empty selects the complete plain presentation in `auto` — `snap.PresentationTest`
+- [x] An invalid `SNAP_COLOR` fails plain, **before** command execution — exact-error example in `snap.PresentationTest`
+- [x] `s(n, text)` is the only escape-emitting function; test expectations use it — `Presentation.s` and every terminal golden in `snap.PresentationTest`
+- [x] Goldens for every §7.11 layout family, cross-checked against `28-terminal-presentation.yaml` — `snap.PresentationTest`
+- [x] The deleted-row symbol is U+2212 MINUS SIGN, not a hyphen — exact `status` golden in `snap.PresentationTest`
+- [x] `--version` reports `snap 1.0.0`, held separately from `build.sbt`'s `0.1.0` — `Presentation.release` and `snap.PresentationTest`
+- [x] The `--serve` URL stays plain; `config` stays silent — `snap.PresentationTest`
+- [x] **SPEC §11 requirement:** `auto` unit-tested for TTY and non-TTY stdout and stderr *independently* — injected-stream example in `snap.PresentationTest`
+- [x] Property: plain-mode output contains no ESC byte — `snap.PresentationTest`
 
 ## Phase 11 — Diff rendering and commands (§7.1–§7.8)
 
