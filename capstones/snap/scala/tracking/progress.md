@@ -231,23 +231,25 @@ Command boundary landed 2026-09-05. `sbt "testOnly snap.*"` reports `Total 290, 
 
 ## Phase 12 — HTTP (§7.9, §9)
 
-- [ ] Server snapshots at startup and never reflects later repository changes
-- [ ] Binds `127.0.0.1` only; port defaults to 8765, `0` asks the OS
-- [ ] Startup URL printed **and flushed**, always plain
-- [ ] `GET` and `HEAD` on `/repository.json`; 404 elsewhere; 405 with `Allow: GET, HEAD`
-- [ ] SIGINT and SIGTERM exit 0
-- [ ] `invalid port: 65536`
-- [ ] Client performs exactly one GET, requires 200, then validates normally
-- [ ] A malformed remote mutates nothing
+HTTP boundary landed 2026-09-05. `sbt "testOnly snap.HttpTest"` verifies snapshot-server and no-redirect client behavior directly; the full Scala suite reports `Total 292, Failed 0`. The 28-case public harness is fully green.
+
+- [x] Server snapshots at startup and never reflects later repository changes
+- [x] Binds `127.0.0.1` only; port defaults to 8765, `0` asks the OS
+- [x] Startup URL printed **and flushed**, always plain
+- [x] `GET` and `HEAD` on `/repository.json`; 404 elsewhere; 405 with `Allow: GET, HEAD`
+- [x] SIGINT and SIGTERM exit 0
+- [x] `invalid port: 65536`
+- [x] Client performs exactly one GET, requires 200, then validates normally
+- [x] A malformed remote mutates nothing
 
 ## Final verification
 
 Unchecked until each command has actually been run and its output read.
 
 - [x] `sbt scalafmtAll` leaves no diff
-- [x] `sbt "testOnly snap.*"` green — `Total 290, Failed 0`
+- [x] `sbt "testOnly snap.*"` green — `Total 292, Failed 0`
 - [x] `sbt assembly` produces `target/scala-3.9.0/snap-assembly-0.1.0.jar`
-- [ ] `../verify --lang scala` passes **28 of 28**
+- [x] `../verify --lang scala` passes **28 of 28**
 - [ ] Manual: `SNAP_COLOR=auto` on a real terminal, with and without `NO_COLOR`
 - [ ] Manual: Ctrl-C on `snap --serve` exits 0
 - [ ] Manual: a large binary file survives `commit` then `revert` byte-for-byte

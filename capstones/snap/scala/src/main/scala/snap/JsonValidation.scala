@@ -10,7 +10,7 @@ object JsonValidation:
   /** Rejects the first duplicate object field in the raw JSON text. */
   def duplicateKeys(text: String): Either[SnapError, Unit] =
     scan(text) match
-      case Some(key) => Left(SnapError(s"duplicate JSON key: $key"))
+      case Some(key) => Left(SnapError(s"duplicate JSON key $key"))
       case None      => Right(())
 
   private def scan(text: String): Option[String] =

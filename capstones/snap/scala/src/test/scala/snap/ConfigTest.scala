@@ -69,10 +69,10 @@ class ConfigTest extends munit.FunSuite:
     withTemporaryDirectory: root =>
       val repository = root.resolve("repository")
       write(repository.resolve(".snap/config.json"), """{"contributor":{"id":"a@x","id":"b@x"}}""")
-      assertEquals(Config.resolve(repository, None), Left(SnapError("duplicate JSON key: id")))
+      assertEquals(Config.resolve(repository, None), Left(SnapError("duplicate JSON key id")))
 
       write(repository.resolve(".snap/config.json"), """{"contributor":{},"contribut\u006fr":{}}""")
-      assertEquals(Config.resolve(repository, None), Left(SnapError("duplicate JSON key: contributor")))
+      assertEquals(Config.resolve(repository, None), Left(SnapError("duplicate JSON key contributor")))
 
       write(repository.resolve(".snap/config.json"), """{"contributor":{"id":"a@x","extra":true}}""")
       assertEquals(Config.resolve(repository, None), Left(SnapError("contributor has unknown field: extra")))

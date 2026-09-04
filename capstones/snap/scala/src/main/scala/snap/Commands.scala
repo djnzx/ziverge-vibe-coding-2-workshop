@@ -147,6 +147,10 @@ object Commands:
           stderr = warnings.mkString
         )
 
+  def serve(context: CommandContext, port: Int, announce: String => Unit): Either[SnapError, Unit] =
+    inLoadedRepository(context): (_, repository) =>
+      Http.serve(repository, port, announce)
+
   private def inRepository[A](context: CommandContext)(run: Path => Either[SnapError, A]): Either[SnapError, A] =
     Workspace.discover(context.cwd).flatMap(run)
 
@@ -155,7 +159,7 @@ object Commands:
       loadRepository(root).flatMap(repository => run(root, repository))
 
   private def loadRemote(context: CommandContext, location: String): Either[SnapError, Repository] =
-    if location.startsWith("http://") || location.startsWith("https://") then Left(SnapError("HTTP repositories are not implemented"))
+    if location.startsWith("http://") || location.startsWith("https://") then Http.fetchRepository(location)
     else
       val path = context.cwd.resolve(location).toAbsolutePath.normalize
       Workspace.discover(path).flatMap(loadRepository)

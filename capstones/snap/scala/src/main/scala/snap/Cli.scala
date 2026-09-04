@@ -44,7 +44,7 @@ object Cli:
       case (Right(stdoutPresentation), Right(stderrPresentation)) =>
         val context = CommandContext(cwd, home, stdoutPresentation, stderrPresentation)
         try
-          dispatch(args, context) match
+          dispatch(args, context, streams) match
             case Right(output) =>
               streams.out.print(output.stdout)
               streams.err.print(output.stderr)
@@ -57,7 +57,7 @@ object Cli:
             streams.err.print(Presentation.error(stderrPresentation, SnapError("internal error")))
             2
 
-  private def dispatch(args: Vector[String], context: CommandContext): Either[SnapError, CommandOutput] = args match
+  private def dispatch(args: Vector[String], context: CommandContext, streams: Streams): Either[SnapError, CommandOutput] = args match
     case Vector("--version") => Right(CommandOutput(stdout = Presentation.version(context.stdoutPresentation)))
 
     case Vector("init")                                     => Commands.init(context, None)
@@ -81,17 +81,19 @@ object Cli:
     case Vector("revert", version) => Commands.revert(context, version)
     case Vector("merge", location) => Commands.merge(context, location)
 
-    // The server is Phase 12. Retaining its strict Phase 11 grammar prevents
-    // its eventual implementation from changing argument behaviour.
-    case Vector("--serve")       => Left(SnapError("HTTP server is not implemented"))
+    case Vector("--serve")       => Commands.serve(context, 8765, announce(streams)).map(_ => CommandOutput())
     case Vector("--serve", port) =>
-      validatePort(port).flatMap(_ => Left(SnapError("HTTP server is not implemented")))
+      parsePort(port).flatMap(Commands.serve(context, _, announce(streams))).map(_ => CommandOutput())
 
     case _ => Left(SnapError("invalid command or arguments"))
 
   private val diffUsage: SnapError =
     SnapError("usage: snap diff [<old-version> <new-version> [--repo <repository>]]")
 
-  private def validatePort(port: String): Either[SnapError, Unit] =
-    if port.nonEmpty && port.forall(_.isDigit) && BigInt(port) <= BigInt(65535) then Right(())
+  private def parsePort(port: String): Either[SnapError, Int] =
+    if port.nonEmpty && port.forall(_.isDigit) && BigInt(port) <= BigInt(65535) then Right(BigInt(port).toInt)
     else Left(SnapError(s"invalid port: $port"))
+
+  private def announce(streams: Streams)(text: String): Unit =
+    streams.out.print(text)
+    streams.out.flush()
