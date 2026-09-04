@@ -47,12 +47,18 @@ Landed 2026-09-04. `sbt "testOnly snap.Paths*"` reports `Total 39, Failed 0`
 
 ## Phase 3 — Text and edit scripts (§4.4)
 
-- [ ] `isText` uses a strict UTF-8 decoder and rejects NUL
-- [ ] `tokens` splits *after* each LF and keeps it; `"a\r\nb"` gives two tokens
-- [ ] `validate` covers positive counts, no adjacent same-kind ops, no empty insert, full consumption, and canonical results
-- [ ] Every §4.4 rejection message matches its regex in the plan's catalog
-- [ ] Property: `untokens ∘ tokens == id`; a validated script always yields a canonical sequence
-- [ ] Mutation check: split *before* LF; drop the NUL check
+Landed 2026-09-04. `sbt "testOnly snap.TextTest snap.TextPropertyTest"` reports
+`Total 36, Failed 0` (26 examples in `snap.TextTest`, 10 properties in
+`snap.TextPropertyTest`). Full suite: `sbt "testOnly snap.*"` reports
+`Total 154, Failed 0`.
+
+- [x] `isText` uses a strict `CharsetDecoder` (`CodingErrorAction.REPORT`) and rejects NUL explicitly, since NUL is itself valid UTF-8
+- [x] `tokens` splits *after* each LF and keeps it; `"a\r\nb"` gives two tokens (`snap.TextTest`); the empty file has no tokens; an unterminated final token survives
+- [x] `validate` covers positive counts bounded by `Limits.maxSafeInteger`, no adjacent same-kind ops, no empty insert, no empty/internally-LF'd insert token, exact old-length consumption (both over- and under-consumption rejected), and canonical results — the "may the last token skip its trailing LF" exemption is resolved by finding the script's last content-emitting operation (a positive `Retain` or a nonempty `Insert`; a trailing `Delete` emits nothing)
+- [x] Every §4.4 rejection message satisfies its catalog regex: `must have one operation`, `insert is empty`, `consumes beyond old content`, `positive safe integer`, and `canonical` (adjacency and LF-position violations both render as `is not canonical: ...`) — one example per message in `snap.TextTest`
+- [x] Properties: `untokens ∘ tokens == id` for arbitrary UTF-8 text; `tokens ∘ untokens == id` for any canonical token sequence; every token but the last ends in LF; `isText` is false for any byte sequence containing NUL; a validated script applied to its declared old length always succeeds and always yields a canonical sequence (generator builds scripts with no two adjacent same-kind ops and derives `oldLength` from the script's own retain/delete counts, so consumption always matches by construction)
+- [x] Rejection properties: adjacent same-kind operations, a zero-count operation, a count beyond `Limits.maxSafeInteger`, and a script that does not consume the full declared old length are each always `Left`
+- [x] Mutation-checked: dropping the NUL check in `isText` fails 2 tests; splitting *before* LF instead of after fails 4 tests (both reverted after confirming)
 
 ## Phase 4 — Canonical diff (§5)
 
