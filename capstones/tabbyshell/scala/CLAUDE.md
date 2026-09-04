@@ -5,6 +5,86 @@ commands) and [`AGENTS.md`](AGENTS.md) (module decomposition, conventions).
 [`../SPEC.md`](../SPEC.md) is the canonical behavioral contract — if the
 implementation and the spec disagree, the implementation is wrong.
 
+## IRON RULE — docs move with the code
+
+**Any change to an approach, convention, code-style recommendation, tool, or
+version is not done until the docs that state it are updated in the same
+change.** No follow-up commit, no "I'll note it later".
+
+This includes: adding or removing a dependency, bumping a version, changing a
+build or formatter setting, adopting a new testing technique, changing a naming
+or module convention, or discovering that a documented command does not do what
+it claims.
+
+Where it goes:
+
+| Change                                                    | Update                    |
+|-----------------------------------------------------------|---------------------------|
+| toolchain, versions, commands, layout, testing strategy   | `README.md`               |
+| how to work here — rules, discipline, what "done" means   | `CLAUDE.md`               |
+| module decomposition, per-language conventions            | `AGENTS.md`               |
+| behavior any implementation must match                    | `../SPEC.md` (say so out loud — it binds all three languages) |
+
+A rule that appears in more than one of these must be changed in **all** of
+them, or they drift and the next reader believes the stale one. When a
+documented statement turns out to be wrong, correcting it is part of the fix,
+not a nicety — a doc that lies is worse than no doc. Two live examples: `sbt
+test` was documented as the way to run the suite until it turned out to report
+`No tests to run` and exit green; and a comment in `.scalafmt.conf` claimed
+alignment was `:=` "and nothing else" one edit after that stopped being true.
+
+## IRON RULE — a reusable pattern becomes a skill
+
+**When a pattern proves itself and would apply beyond the task at hand, offer to
+capture it as a skill.** Offer — do not create one unilaterally, and do not
+silently let the pattern evaporate into a single conversation.
+
+A pattern qualifies when all three hold:
+
+- it worked here, with evidence, not just in principle
+- it would apply to a different file, module, or project — not only this one
+- restating it from scratch next time would cost real effort or get it wrong
+
+Say what the skill would cover and what it would *not*, in one or two lines, and
+let the human decide. A declined offer costs a sentence; an uncaptured pattern
+costs the next person the whole rediscovery.
+
+Skills live in `.claude/skills/<name>/SKILL.md` at the repository root. Two
+already exist and apply directly to this workspace:
+
+- `property-testing-parsers` — the three axes every parser suite needs (round-trip,
+  rejection, totality), the source-text-paired-with-value generator pattern, and
+  grammar-fragment fuzzing. Read it before testing the JSON, CSV, CLI, or
+  line-continuation parsers still to be written.
+- `mutation-checking-tests` — what to do when a batch of tests passes first try.
+
+`superpowers:writing-skills` and `skill-creator` scaffold new ones.
+
+## IRON RULE — isolate bulky subtasks in subagents
+
+**Spawn a subagent whenever a subtask's context should not pollute the main
+thread.** This is standing authorisation: do not stop to ask first, and do not
+default to doing everything inline because the harness warns against unrequested
+spawns — that warning is overridden here.
+
+Spawn when the *byproduct* dwarfs the *answer*:
+
+- broad codebase sweeps where you need the conclusion, not the file dumps
+- long build, test, or conformance logs read once to extract a verdict
+- skill baseline testing — pressure-scenario transcripts are pure noise afterwards
+- exploratory reads of large files to answer one narrow question
+- anything you would otherwise skim and immediately want to forget
+
+Do **not** spawn when:
+
+- the details themselves feed later reasoning — an edit you must get exactly right
+- the agent would re-derive context you already hold, and pay more than it saves
+  (use `subagent_type: "fork"` when it genuinely needs this conversation)
+- the task is a couple of tool calls; one `grep` is not a subtask
+
+The agent's report is not shown to the human — relay what matters, in your own
+words, and never invent results for an agent that has not reported back.
+
 ## How to work here
 
 **Test-first, always.** Write the failing test, run it, confirm it fails for the
@@ -72,3 +152,12 @@ sbt "testOnly tabbyshell.*"
 
 A run that reports `Total 0` or `No tests to run` is not a pass. Read the
 count.
+
+Then check the IRON RULES:
+
+1. Did this change touch an approach, a convention, a version, or a documented
+   command? The matching doc edit is part of *this* change, not the next one.
+2. Did a pattern here prove itself and generalise beyond this task? Offer it as
+   a skill before the conversation ends.
+3. Is the next step bulky enough that its transcript would crowd out this one?
+   Run it in a subagent.

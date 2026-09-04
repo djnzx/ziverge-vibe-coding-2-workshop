@@ -126,6 +126,10 @@ These are checked by mutation, not taken on faith: removing the `tokenEnd` guard
 4 of them rejection properties. A property suite that survives a mutation like that is
 not testing anything.
 
+Both techniques are written up as repository skills, and apply to the parsers still to
+come: `.claude/skills/property-testing-parsers/` and
+`.claude/skills/mutation-checking-tests/`.
+
 Two generators are worth knowing about. `fuzz` builds strings from *grammar
 fragments* (`"`, `\\`, `|`, `#`, `5kb`, `999999999999999999999`, …) rather than
 arbitrary characters, because `Arbitrary[String]` essentially never produces an
@@ -162,6 +166,33 @@ sbt scalafmtAll
 
 WartRemover fails the build on `return`, `asInstanceOf`, `isInstanceOf`, and
 `null`. Errors are values (`Either[ShellError, _]`), not exceptions.
+
+## Keeping the docs honest
+
+**IRON RULE: any change to an approach, convention, code-style recommendation,
+tool, or version is not done until the docs that state it are updated in the
+same change.**
+
+- `README.md` (this file) — toolchain, versions, commands, layout, testing strategy
+- [`CLAUDE.md`](CLAUDE.md) — the working agreement: how to work here, what "done" means
+- [`AGENTS.md`](AGENTS.md) — module decomposition and per-language conventions
+- [`../SPEC.md`](../SPEC.md) — behavior binding all three implementations; change deliberately
+
+A rule stated in more than one of these must be changed in all of them.
+Correcting a documented statement that turns out to be wrong is part of the fix,
+not an optional tidy-up: a doc that lies costs more than no doc at all.
+
+**IRON RULE: a pattern that proves itself and generalises gets offered as a
+skill.** If a technique worked here with evidence, would apply beyond this
+project, and would be costly to re-derive, propose capturing it in
+`.claude/skills/<name>/SKILL.md` rather than leaving it in one conversation.
+Propose it — the decision to add a skill is the human's.
+
+**IRON RULE: bulky subtasks run in subagents.** When a subtask's byproduct dwarfs
+its answer — broad code sweeps, long conformance logs, exploratory reads — run it
+in a subagent so the transcript stays out of the main thread. Not for work whose
+details feed later reasoning, and not for two tool calls.
+
 
 ## Deviations from `ts/src/contracts.ts`
 

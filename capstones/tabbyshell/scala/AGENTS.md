@@ -1,5 +1,37 @@
 # TabbyShell — Scala implementation
 
+## IRON RULE — docs move with the code
+
+**Any change to an approach, convention, code-style recommendation, tool, or
+version is not done until the docs that state it are updated in the same
+change.** Dependencies, version bumps, build or formatter settings, testing
+technique, module conventions — and any documented command that turns out not to
+do what it claims.
+
+`README.md` carries toolchain, commands, layout, and testing strategy;
+`CLAUDE.md` carries the working agreement; this file carries module
+decomposition and conventions; `../SPEC.md` carries behavior binding all three
+language implementations — change it only deliberately, and say so. A rule
+stated in more than one of these must be changed in all of them.
+
+## IRON RULE — a reusable pattern becomes a skill
+
+**When a pattern proves itself here and would apply beyond this task, offer to
+capture it as a skill** — offer, do not create one unilaterally. It qualifies if
+it worked with evidence, generalises past this one file or project, and would be
+costly to re-derive. Skills live in `.claude/skills/<name>/SKILL.md`; the
+`skill-creator` skill scaffolds them.
+
+## IRON RULE — isolate bulky subtasks in subagents
+
+**Spawn a subagent whenever a subtask's context should not pollute the main
+thread** — standing authorisation, no need to ask. Use it when the byproduct
+dwarfs the answer: broad codebase sweeps, long conformance or build logs read once
+for a verdict, skill baseline testing, large-file reads answering one narrow
+question. Do not use it when the details feed later reasoning, when the agent
+would re-derive context you already hold, or for a task that is two tool calls.
+Relay what matters from the agent's report; it is not shown to the human.
+
 ## Setup
 
 sbt fetches everything; no separate install step. Toolchain: sbt 2.0.8,
