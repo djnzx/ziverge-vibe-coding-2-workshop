@@ -75,11 +75,16 @@ Landed 2026-09-04. `sbt "testOnly snap.DiffTest snap.DiffPropertyTest"` reports
 
 ## Phase 5 — Operational transform (§6.3)
 
-- [ ] `transform` implements all six rows with `Q insert` taking priority
-- [ ] Example per table row, plus concurrent inserts at one cursor
-- [ ] Property: both scripts consume the same base token count; no unmatched op remains
-- [ ] Property: text inserted by `Q` always survives the transform
-- [ ] Mutation check: demote the `Q insert` row below `P insert`
+Landed 2026-09-04. `sbt "testOnly snap.OtTest snap.OtPropertyTest"` reports
+`Total 14, Failed 0` (11 examples, 3 properties). Full suite:
+`sbt "testOnly snap.*"` reports `Total 179, Failed 0`.
+
+- [x] `transform` implements all six rows with `Q insert` taking priority — `Ot.transform`, a left-to-right walk over both streams with count-splitting via a shared `push`/`remainder` pair mirroring `Diff.scala`'s coalescing
+- [x] Example per table row, plus concurrent inserts at one cursor — six single-row examples plus the priority-deciding case in `snap.OtTest`, asserting `p`'s insert lands *after* `q`'s when both insert at the same cursor
+- [x] Three cases shaped like `22-ot-matrix.yaml`'s merge scenarios (delete/delete, the all-rows-at-once split, retain/delete, and insert-survives-delete), each computed via `Diff.diff` against the same base the YAML fixture uses and checked against that fixture's asserted merged bytes
+- [x] Property: `transform(p, q)` is a valid, coalesced script against the token count `q`'s result has, and applying it never fails — `snap.OtPropertyTest`, `p`/`q` generated as real `Diff.diff` scripts off a shared base
+- [x] Property: text inserted by `Q` always survives the transform — a marker-token generator (`withMarkersSpliced`) drawn from an alphabet disjoint from the base/edit alphabet, asserting the marker's count in the result matches its count in `q`'s own result
+- [x] Mutation check: demoting the `Q insert` row below `P insert` fails the concurrent-insert example plus all 3 properties (4 of 14 tests) — reverted after confirming (2026-09-04)
 
 ## Phase 6 — Repository JSON and validation (§4.1, §4.5, §3.5)
 

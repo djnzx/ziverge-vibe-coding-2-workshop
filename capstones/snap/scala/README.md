@@ -152,6 +152,7 @@ repository root. Recorded so far:
 | `Paths`: `prefixFree` via sorted-adjacency instead of pairwise | 1 |
 | `Text`: `isText` drops the explicit NUL-byte check | 2 |
 | `Text`: `tokens` splits before LF instead of after | 4 |
+| `Ot`: demote the `Q insert` row below `P insert` | 4 |
 
 One mutation **survived** and is worth recording because it is not a gap:
 dropping the explicit `.sorted` from Snap order's union changes nothing, because
