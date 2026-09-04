@@ -62,12 +62,16 @@ Landed 2026-09-04. `sbt "testOnly snap.TextTest snap.TextPropertyTest"` reports
 
 ## Phase 4 — Canonical diff (§5)
 
-- [ ] Literal `D(i, j)` recurrence with delete-on-tie, coalesced output
-- [ ] Golden: `"a\nb\na\n"` → `"b\na\na"` matches `05-diff-goldens.yaml`
-- [ ] Property: `Text.apply(diff(a, b), a) == b`
-- [ ] Property: insert + delete count equals `D(0, 0)` — the script is minimal
-- [ ] Mutation check: tie rule as `<` instead of `<=`
-- [ ] *(only if an optimized algorithm is adopted)* differential property against the literal recurrence
+Landed 2026-09-04. `sbt "testOnly snap.DiffTest snap.DiffPropertyTest"` reports
+`Total 11, Failed 0` (7 examples, 4 properties). Full suite:
+`sbt "testOnly snap.*"` reports `Total 165, Failed 0`.
+
+- [x] Literal `D(i, j)` recurrence with delete-on-tie, coalesced output — `Diff.distances` implements the recurrence verbatim; `Diff.diff`'s walk coalesces adjacent same-kind operations as it emits them
+- [x] Golden: `"a\nb\na\n"` → `"b\na\na"` matches `05-diff-goldens.yaml` — pinned in `snap.DiffTest` as `Delete(1), Retain(2), Insert(["a"])`, matching the patch recorded in the YAML's `json_equals` assertion
+- [x] Property: `Text.apply(diff(a, b), a) == b` — `snap.DiffPropertyTest`, over generated canonical token sequences
+- [x] Property: insert + delete count equals `D(0, 0)` — the script is minimal — checked against an independently reimplemented `D(0,0)` oracle in the test, not `Diff.distances` itself
+- [x] Mutation check: tie rule as `<` instead of `<=` fails 2 tests (the golden and a dedicated coalescing example) — reverted after confirming (2026-09-04)
+- [ ] *(only if an optimized algorithm is adopted)* differential property against the literal recurrence — not applicable; the literal recurrence ships as-is
 
 ## Phase 5 — Operational transform (§6.3)
 
