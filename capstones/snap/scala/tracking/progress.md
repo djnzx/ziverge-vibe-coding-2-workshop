@@ -133,17 +133,47 @@ against the exact scenarios those YAML files use, so passing them today is the e
 
 ## Phase 7 — Deterministic replay (§6.1, §6.2, §6.4, §6.5)
 
-- [ ] Ready ordering keys in the §6.1 sequence: Snap order, author, revision
-- [ ] Namespace resolution runs for the patch as a whole, **before** the per-path rules
-- [ ] The four §6.2 per-path cases, including the identical-`C`-and-`T` collapse before OT
-- [ ] OT uses the aggregate context edit `diff(B, C)` once, not once per historical patch
-- [ ] All six §6.4 rules, in order, with correct warning reasons
-- [ ] All of one patch's path changes applied together
-- [ ] Warnings unique, sorted by path then reason; line OT emits none
-- [ ] Generator for **valid causal patch graphs** (not arbitrary patches)
-- [ ] Property: import permutations converge on frontier, patches, warnings, and bytes — ≥200 generated graphs
-- [ ] Property: re-merge is a no-op; merge direction does not change the result
-- [ ] Mutation check: ready ordering by author alone fails the permutation property
+Landed 2026-09-05. `sbt "testOnly snap.ReplayTest snap.ReplayPropertyTest"` reports `Total 26, Failed 0` (17 examples, 8 properties, 1 generator-coverage test).
+Full suite: `sbt "testOnly snap.*"` reports `Total 251, Failed 0`. `sbt scalafmtAll` reformatted 2 sources and the suite stayed green; `sbt assembly` still
+builds the JAR. `../verify --lang scala` still reports `28 failed, 0 passed` — expected, `Cli.scala` is still the Phase 0 stub; this phase's five acceptance
+files are exercised at the unit level against the exact scenarios they run.
+
+- [x] Ready ordering keys in the §6.1 sequence: Snap order of result versions, then author, then revision — `Replay.readyOrdering`; every example below is only
+      correct for that order, which is what makes them the evidence
+- [x] Namespace resolution runs for the patch as a whole, **before** the per-path rules, over `C'` (the canonical tree minus what the patch deletes) — both
+      directions of `11-namespace-conflicts.yaml` reproduced in `ReplayTest`
+- [x] The four §6.2 per-path cases, including the identical-`C`-and-`T` collapse before OT; without it, two identical concurrent edits duplicate their own text
+      (`"same\nsame\n"` instead of `"same\n"`), which is what the mutation showed
+- [x] OT uses the aggregate context edit `diff(B, C)` once — the three-way merge from `18-three-way-convergence.yaml` produces `"B\nA\nend\n"`, worked by hand
+      and matching the YAML's assertion
+- [x] All six §6.4 rules, in order, with correct reasons — one example per rule, all against a single history shaped like `10-merge-conflicts.yaml`, whose
+      stderr assertion the warning set reproduces exactly
+- [x] All of one patch's path changes applied together, each resolved against the same `B` and `C` and never against a tree a sibling path already updated
+- [x] Warnings unique and sorted by path then reason (a `SortedSet[Warning]`); line OT emits none — the three-way text merge asserts an empty warning set
+- [x] Nested base replays are memoized by version. Without it a forked history costs exponential time, because §6.2 makes every patch's exact base a full replay
+- [x] Generator for **valid causal patch graphs** — grows a history one patch at a time from a pool of already-materializable versions, joining a random subset
+      for each new base (joins of materializable versions are materializable, so validity is structural, not filtered for), and forces the author's own latest
+      result into that base so the dot is fresh and `revision = base[author] + 1` holds by construction
+- [x] The generator is checked two ways, because it uses `Replay.materialize` to compute the base tree it draws changes against: `Validation.validate` accepts
+      every generated repository (re-deriving each base independently of replay's bookkeeping), and a seeded coverage test asserts that all five §6.4 reasons
+      actually occur across 300 graphs — it fails if the generator ever stops producing genuine conflicts
+- [x] Property: replay depends only on the patch *set*, never on arrival order — 200 generated graphs, each against an independently drawn permutation
+- [x] Property: merge direction does not change the joined result; merging a version the frontier already contains is a no-op; import is associative
+- [x] Property: the replayed tree is always prefix-free; every warning names a path some patch actually changed
+- [x] Phase 6's placeholder materializer is gone. `Validation` now calls `Replay.materialize` for passes 5 and 6, and §4.3's authored-result rules moved to
+      `Replay` (`authored`, `authoredTree`) so both callers share one implementation and the dependency runs one way. Phase 6's 46 tests stayed green through
+      the swap, which is the evidence the move preserved every message in the catalog
+- [x] **The plan's mutation check was wrong about which test catches what.** Ready ordering by plain author order is *still* a deterministic function of the
+      patch set, so the permutation property survives it untouched; the 8 golden examples plus the coverage test are what fail (9 tests). Only a selection that
+      reads arrival order — taking the ready set's head — falsifies the permutation property (2 tests). Both are now recorded in `README.md`; `plan.md`'s exit
+      criterion was corrected to ask for both
+- [x] **A mutation survived and found a real gap.** Folding a nested base replay's warnings into the outer set failed nothing. It is observable: a patch's base
+      can resolve a path as `later-put-wins` while the replay containing it sees an earlier concurrent delete, resolves `delete-wins`, and never reaches that
+      rule at all. `ReplayTest` now builds exactly that five-patch history and the mutation fails it. The reading it pins — a base replay computes `B`, and a
+      replay reports only its own integrations' warnings — is recorded as an open question in `AGENTS.md`, since no case in `../tests/` discriminates
+- [x] Mutation-checked (`Replay.scala`), each reverted after confirming (2026-09-05): ready ordering by author alone fails 9; ready set's head fails 2;
+      namespace resolution per path instead of per patch fails 7 (including the prefix-free property); dropping §6.2's identical-`C`-and-`T` collapse fails 1;
+      swapping §6.4's `later-put-wins` and `put-wins` fails 3; nested base warnings collected fails 1 (0 before the gap above was closed)
 
 ## Phase 8 — Workspace and filesystem (§2, §10)
 

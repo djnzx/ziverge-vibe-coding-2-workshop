@@ -406,7 +406,9 @@ duplicate-versus-corrupt), §4.3 (change variants and their base preconditions),
    every patch's complete base closure and `revision = base[author] + 1`;
    acyclic causality; every change against its materialized exact base; and a
    deterministic replay of the declared frontier (this last pass calls into
-   Phase 7 — implement it as a hook now and wire it when replay lands).
+   Phase 7 — implement it as a hook now and wire it when replay lands, along
+   with §4.3's authored-result rules, which move to `Replay.scala` so the
+   dependency runs one way).
 6. `patches` must be exactly the causal closure of `frontier`, sorted by author
    then numeric revision, with no unreachable patch (`unreachable patch: .+`).
 7. §3.5: the same dot carrying structurally different patch values is
@@ -460,7 +462,11 @@ Phases 1–5 are green, since every bug here will otherwise look like a replay b
 
 **Steps.**
 
-1. `def materialize(patches: Set[Patch], target: Version): Either[SnapError, (Tree, SortedSet[Warning])]`.
+1. `def materialize(patches: Vector[Patch], target: Version): Either[SnapError, (Tree, SortedSet[Warning])]`.
+   A `Vector`, not a `Set`: order-independence is the property this phase has to
+   prove, and a `Set` parameter makes it unfalsifiable — there is no permutation
+   to feed it. Taking the sequence and asserting the result never varies is the
+   testable form of the same claim.
 2. Selection: every patch `(c, n)` with `n <= target[c]`; the set must contain
    every selected patch's base. If no ready patch remains before replay
    completes, the history has a cycle or a missing dependency — fail; never
@@ -502,8 +508,12 @@ Phases 1–5 are green, since every bug here will otherwise look like a replay b
 
 **Exit criterion.** `sbt "testOnly snap.ReplayTest snap.ReplayPropertyTest"`
 green, with the permutation property running at least 200 generated graphs.
-Mutate the ready ordering to plain author order and confirm the permutation
-property fails.
+
+Mutate the ready ordering and confirm the suite catches it — but note *which*
+mutation falsifies *which* test. Plain author order is still a deterministic
+function of the patch set, so permutation invariance survives it untouched; what
+catches it is the golden examples. Only a selection that reads arrival order
+(taking the ready set's head) makes the permutation property fail. Run both.
 
 ---
 

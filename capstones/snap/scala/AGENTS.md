@@ -130,7 +130,10 @@ src/main/scala/snap/
                       context edit, `Q insert` row first
   Replay.scala      — §6.1/§6.2/§6.4: ready-set selection and ordering,
                       per-patch integration, namespace resolution, the six
-                      path-level rules, and warning collection
+                      path-level rules, and warning collection. Also owns §4.3's
+                      authored-result rules (`authored`, `authoredTree`), which
+                      `Validation`'s pass 5 needs too — the dependency runs one
+                      way, `Validation` -> `Replay`, never the reverse
   RepositoryJson.scala — §4.1: strict parse and canonical serialization of
                       `repository.json` (two-space indent, trailing LF)
   Validation.scala  — §4.5: the six validation passes, in order
@@ -217,6 +220,17 @@ Resolve them by reading `../tests/`, and if the tests are silent too, correct
   Checked: every warning assertion in `../tests/` uses distinct paths, so the
   suite never discriminates. Leave the current choice, and do not invent a case
   that pins a different one.
+- **Whose warnings a replay reports.** §6.2 has each patch integrate against its
+  *exact base tree*, which is a replay in its own right and can have concurrency
+  of its own. §6.4 does not say whether those nested replays' warnings join the
+  outer set. `Replay` says no: a base replay computes `B`, and the warnings a
+  replay reports are the ones its own integrations produced. Checked: no case in
+  `../tests/` has a patch whose base is itself a fork, so the suite never
+  discriminates — but it is observable (a base can resolve `later-put-wins`
+  while the outer replay, seeing an earlier concurrent delete, resolves
+  `delete-wins` and never reaches that rule), so `ReplayTest` pins it. Merge's
+  §6.4 rule — print only what the joined replay has and the pre-merge local
+  replay did not — reads naturally under this choice and oddly under the other.
 - **Per-stream TTY detection.** §7.11's `auto` mode selects presentation
   independently for stdout and stderr, but the JVM exposes no per-stream
   `isatty` — `Console.isTerminal` describes the console as a whole. `Streams`

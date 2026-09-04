@@ -5,11 +5,9 @@ import scala.annotation.tailrec
 /** SPEC §4.5 — the five cross-patch validation passes that come after RepositoryJson's schema pass (§4.5 pass 1), plus the §3.5 corruption check and the §4.1
   * `known` query. Everything here is pure: no filesystem, no environment, no clock.
   *
-  * Passes 2–4 are pure graph shape and need no filesystem or tree materialization. Passes 5–6 need to know what a version's tree actually looks like, which in
-  * general requires §6's full replay (concurrency resolution, namespace conflicts, OT) — Phase 7's job. [[materialize]] below is a **placeholder**: it selects
-  * and applies patches in §6.1's ready order with no conflict resolution at all, which is exactly right for every base this phase's own tests exercise (each
-  * one is either empty or a single linear chain) and wrong for a base that genuinely forks and rejoins. Replace it with `Replay.materialize` once Phase 7
-  * lands; the call sites in [[checkChangesAgainstBase]] and [[checkFrontierClosure]] are the only places that need to change.
+  * Passes 2–4 are pure graph shape and need no tree materialization. Passes 5–6 need to know what a version's tree actually looks like, which in general
+  * requires §6's full replay — concurrency resolution, namespace conflicts, and OT — so both call `Replay.materialize`, and the §4.3 authored-result rules
+  * (what one patch makes of its own exact base) live in `Replay` too. The dependency runs one way on purpose: `Validation` calls `Replay`, never the reverse.
   */
 object Validation:
 
@@ -78,65 +76,20 @@ object Validation:
 
     loop(patches.map(_.dot).toSet, Set.empty)
 
-  // ---- the placeholder materializer (see the class doc) --------------------------
+  // ---- passes 5 and 6 materialize through Replay ---------------------------------
 
-  private def readyOrder(patches: Vector[Patch]): Vector[Patch] =
-    patches.sortWith: (a, b) =>
-      val byResult = Versions.snapOrder.compare(a.result, b.result)
-      if byResult != 0 then byResult < 0
-      else
-        val byAuthor = summon[Ordering[ContributorId]].compare(a.author, b.author)
-        if byAuthor != 0 then byAuthor < 0 else a.revision < b.revision
-
-  private def selectClosure(patches: Vector[Patch], target: Version): Vector[Patch] =
-    patches.filter(p => p.revision <= target(p.author))
-
-  private def materialize(all: Vector[Patch], target: Version): Either[SnapError, Tree] =
-    readyOrder(selectClosure(all, target)).foldLeft[Either[SnapError, Tree]](Right(Tree.empty)): (acc, patch) =>
-      acc.flatMap(tree => applyPatch(tree, patch))
-
-  /** SPEC §4.3/§6.4 — apply one patch's changes together, then require the result to stay prefix-free. Namespace *resolution* (§6.2, removing whichever side
-    * loses) is Phase 7's job; this placeholder only refuses a conflict outright.
+  /** SPEC §6 — the tree a version denotes, discarding replay's warnings: validation asks only whether the history *can* be materialized, never how the
+    * concurrency in it resolved.
     */
-  private def applyPatch(tree: Tree, patch: Patch): Either[SnapError, Tree] =
-    patch.changes
-      .foldLeft[Either[SnapError, Tree]](Right(tree)): (acc, change) =>
-        acc.flatMap(t => applyChange(t, change))
-      .flatMap: newTree =>
-        Paths.prefixFree(newTree.keySet) match
-          case Left(_)  => Left(invalid("tree paths conflict"))
-          case Right(_) => Right(newTree)
-
-  /** SPEC §4.3 — one change against the tree so far: `delete` requires presence, `put` and `text` accept absence (create) or presence (replace/edit), and any
-    * change that leaves both existence and bytes unchanged is a `no-op change` — except creating an empty text file, which never equals an absent path so it
-    * never trips this check.
-    */
-  private def applyChange(tree: Tree, change: Change): Either[SnapError, Tree] = change match
-    case Change.Delete(path) =>
-      if tree.contains(path) then Right(tree - path)
-      else Left(invalid(s"delete of absent path: ${path.value}"))
-    case Change.Put(path, content) =>
-      if tree.get(path).contains(content) then Left(invalid("no-op change"))
-      else Right(tree.updated(path, content))
-    case Change.Text(path, edit) =>
-      val current   = tree.get(path)
-      val oldTokens = current match
-        case None                              => Right(Vector.empty[String])
-        case Some(bytes) if Text.isText(bytes) => Right(Text.tokens(bytes))
-        case Some(_)                           => Left(invalid(s"${path.value} is not text"))
-      oldTokens.flatMap: old =>
-        Text
-          .apply(edit, old)
-          .flatMap: result =>
-            val newBytes = Text.untokens(result)
-            if current.contains(newBytes) then Left(invalid("no-op change")) else Right(tree.updated(path, newBytes))
+  private def materialize(patches: Vector[Patch], target: Version): Either[SnapError, Tree] =
+    Replay.materialize(patches, target).map((tree, _) => tree)
 
   // ---- pass 5: every change against its materialized exact base ------------------
 
   private def checkChangesAgainstBase(patches: Vector[Patch]): Either[SnapError, Unit] =
     patches.foldLeft[Either[SnapError, Unit]](Right(())): (acc, patch) =>
       acc.flatMap: _ =>
-        materialize(patches, patch.base).flatMap(base => applyPatch(base, patch)).map(_ => ())
+        materialize(patches, patch.base).flatMap(base => Replay.authoredTree(base, patch)).map(_ => ())
 
   // ---- pass 6: deterministic replay of the declared frontier ---------------------
 

@@ -126,6 +126,16 @@ Two Snap-specific generator notes, both learned here:
 - **Generate causal patch graphs, not patches.** SPEC §11 asks for permutation
   properties, which need a *valid* history: one patch per dot, contiguous
   revisions, bases present. Build the graph, then permute the import order.
+  `ReplayPropertyTest` grows one patch at a time from a pool of versions already
+  known to be materializable, joining a random subset of that pool for each new
+  base; joins of materializable versions are materializable, so validity is
+  structural rather than filtered for.
+- **A permutation property only falsifies order-*dependence*.** Replacing §6.1's
+  ready ordering with a different but still deterministic one (plain author
+  order, say) leaves permutation invariance perfectly true — the golden examples
+  are what catch it. Only a selection that reads arrival order, such as taking
+  the ready set's head, makes the permutation property fail. Both mutations are
+  recorded below because they falsify different things.
 
 Prove the suite has teeth by mutation: break an invariant on purpose, confirm
 the tests fail, revert. See `.claude/skills/mutation-checking-tests/` at the
@@ -153,6 +163,19 @@ repository root. Recorded so far:
 | `Text`: `isText` drops the explicit NUL-byte check | 2 |
 | `Text`: `tokens` splits before LF instead of after | 4 |
 | `Ot`: demote the `Q insert` row below `P insert` | 4 |
+| `Replay`: ready ordering by author alone, dropping §6.1's Snap-order key | 9 |
+| `Replay`: take the ready set's head instead of its least element | 2 |
+| `Replay`: resolve namespace conflicts per path instead of per patch | 7 |
+| `Replay`: drop §6.2's identical-`C`-and-`T` collapse before OT | 1 |
+| `Replay`: swap §6.4's `later-put-wins` and `put-wins` rules | 3 |
+| `Replay`: fold a nested base replay's warnings into the outer set | 1 |
+
+The last `Replay` row is there because the mutation **survived at first** — no
+test noticed a base replay's warnings leaking into the result. That was a real
+gap, not an equivalent mutant: a base can resolve `f` as `later-put-wins` while
+the replay containing it sees an earlier concurrent delete and resolves
+`delete-wins`, never reaching that rule at all. `ReplayTest` now builds exactly
+that history, and the mutation fails it.
 
 One mutation **survived** and is worth recording because it is not a gap:
 dropping the explicit `.sorted` from Snap order's union changes nothing, because
