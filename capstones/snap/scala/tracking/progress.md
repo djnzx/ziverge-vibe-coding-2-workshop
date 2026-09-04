@@ -4,7 +4,7 @@ A live ledger for [`plan.md`](plan.md). Check an item **only** beside named
 evidence: a test suite that ran, a verifier case that passed, a command whose
 output you read. Source-file presence is never evidence.
 
-Baseline: 2026-09-04 — `sbt "testOnly snap.*"` reports `Total 12, Failed 0`;
+Baseline: 2026-09-04 — `sbt "testOnly snap.*"` reports `Total 79, Failed 0`;
 `../verify --lang scala` reports `28 failed, 0 passed`, every case stopping at
 `snap: not implemented`.
 
@@ -20,14 +20,19 @@ Baseline: 2026-09-04 — `sbt "testOnly snap.*"` reports `Total 12, Failed 0`;
 
 ## Phase 1 — Versions (§3)
 
-- [ ] `Versions.contributorId` enforces §3.1, including the 254-byte boundary
-- [ ] `Versions.parse` / `render` round-trip canonical §3.2 syntax
-- [ ] `parse` rejects duplicate IDs, explicit zeroes, leading zeroes, whitespace, noncanonical order, and revisions over 9007199254740991 — one example each
-- [ ] Oversized revisions become `SnapError` via `BigInt`, never a wrap or a thrown `NumberFormatException`
-- [ ] `compare` returns all four `Causality` outcomes; `Concurrent` is never folded into before or after
-- [ ] Properties: join is idempotent, commutative, associative, and a least upper bound
-- [ ] Property: Snap order is total and extends causal order
-- [ ] Mutation check: flipped Snap-order tie, dropped duplicate-ID check, `Concurrent` folded into `Before`
+Landed 2026-09-04. `sbt "testOnly snap.Versions*"` reports `Total 67, Failed 0`
+(30 examples in `snap.VersionsTest`, 37 properties in `snap.VersionsPropertyTest`).
+
+- [x] `Versions.contributorId` enforces §3.1, including the 254-byte boundary and the ASCII restriction
+- [x] `Versions.parse` / `render` round-trip canonical §3.2 syntax — 4 round-trip properties
+- [x] `parse` rejects duplicate ids, explicit zeroes, leading zeroes, whitespace, noncanonical order, and revisions over 9007199254740991 — an example and a property each
+- [x] Oversized revisions become `SnapError` via `BigInt`, never a wrap or a thrown `NumberFormatException` — pinned by a property over 17-to-40-digit literals
+- [x] `compare` returns all four `Causality` outcomes; `Concurrent` is never folded into before or after
+- [x] Properties: join is idempotent, commutative, associative, an upper bound, and the *least* upper bound
+- [x] Property: Snap order is total, antisymmetric, transitive, agrees with equality, and extends causal order
+- [x] Property: Snap order matches §3.4 read literally off the sorted union (an oracle — the algebraic properties alone do not pin *which* order)
+- [x] Error details escape control characters so §10's one-line rule holds — found by the message-shape property, not by an example
+- [x] Mutation-checked: 12 mutations, each caught by 1–7 tests; the one survivor was an equivalent mutant and is recorded in `README.md`
 
 ## Phase 2 — Paths and trees (§2)
 

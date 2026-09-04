@@ -128,10 +128,34 @@ Two Snap-specific generator notes, both learned here:
   revisions, bases present. Build the graph, then permute the import order.
 
 Prove the suite has teeth by mutation: break an invariant on purpose, confirm
-the tests fail, revert. Three mutations are recorded against the current
-scaffold — UTF-16 path order (2 tests), `FileBytes` reference equality (3), and
-a patch result that advances the wrong component (1). See
-`.claude/skills/mutation-checking-tests/` at the repository root.
+the tests fail, revert. See `.claude/skills/mutation-checking-tests/` at the
+repository root. Recorded so far:
+
+| Mutation | Tests it fails |
+|---|---|
+| `Contracts`: UTF-16 path order instead of unsigned UTF-8 | 2 |
+| `Contracts`: `FileBytes` compares by reference | 3 |
+| `Contracts`: a patch result advances the wrong component | 1 |
+| `Versions`: echo untrusted text raw in error details | 1 |
+| `Versions`: accept leading zeroes | 2 |
+| `Versions`: narrow revisions with `toLong` instead of `BigInt` | 2 |
+| `Versions`: drop the noncanonical-ordering check | 2 |
+| `Versions`: drop the duplicate-contributor check | 2 |
+| `Versions`: fold `Concurrent` into `Before` | 5 |
+| `Versions`: allow comma and parens in ids | 2 |
+| `Versions`: `split(",")` without keeping trailing empty fields | 1 |
+| `Versions`: allow an explicit zero revision | 3 |
+| `Versions`: read the Snap-order union descending | 3 |
+| `Versions`: `compare` ignores contributors absent from the left | 7 |
+| `Versions`: `join` takes the minimum | 4 |
+
+One mutation **survived** and is worth recording because it is not a gap:
+dropping the explicit `.sorted` from Snap order's union changes nothing, because
+`SortedMap.keySet` is a `TreeSet` and `union` preserves it — an equivalent
+mutant. The response was to make that guarantee structural rather than
+accidental (`contributors` now returns `SortedSet`) and to add an oracle
+property that pins *which* order §3.4 asks for, since the algebraic properties
+hold for any deterministic total order.
 
 ### 2. Cross-language conformance (YAML)
 

@@ -190,6 +190,12 @@ src/main/scala/snap/
   `snap: invalid command or arguments`; a malformed `diff` is
   `snap: usage: snap diff …` (`../tests/24-cli-grammar-matrix.yaml`).
 - The `status` deleted-row symbol is **U+2212 MINUS SIGN**, not a hyphen.
+- **Escape control characters in any error detail that quotes user input.** §10
+  says an error is one line, and a contributor id or version argument may hold a
+  newline. Echoing it raw splits one error across two and breaks the suite's
+  `^snap: … .+\n$` matchers. `Versions.describe` is the pattern: `(empty)` for
+  empty input, then backslash, tab, and LF escaped in §7.4's order, then any
+  other control character as `\uXXXX`. A property found this, not an example.
 
 ## Planning artifacts
 

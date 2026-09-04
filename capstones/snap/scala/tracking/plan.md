@@ -112,6 +112,17 @@ Read these before writing code; each one is a trap.
 
 ## Phases
 
+Every phase opens with a **Start here** block: the spec text to read, the
+modules it builds on, and the acceptance cases it moves. That exists so a
+session can begin cold — after a `/clear` between phases — without re-deriving
+the map. Read `CLAUDE.md` and `AGENTS.md` once on entry too; they carry the
+conventions and the working agreement, and no phase repeats them.
+
+Line numbers are a convenience for jumping to the right place; the **section
+number is authoritative**, and the line numbers drift the moment `../SPEC.md` is
+edited. Clear between phases, not inside one — mid-phase, and especially
+mid-debugging, the live reasoning is exactly the part that no file holds.
+
 Pure, deterministic layers come first: everything in §§3–6 is decidable without
 touching the filesystem, and every later phase depends on them. No public
 acceptance case passes until Phase 11 assembles a vertical slice, so each phase
@@ -121,6 +132,11 @@ them.
 ---
 
 ### Phase 1 — Versions (§3)
+
+**Start here.**
+- Read: `../SPEC.md` §3, lines 86–151.
+- Builds on: `Contracts.scala` (`ContributorId`, `Version`, `Causality`, `Dot`, `Limits`).
+- Acceptance cases it moves: `19-version-boundaries.yaml`, `21-version-algebra.yaml`, `25-config-version-path-boundaries.yaml`.
 
 **Goal.** `Versions.scala`: contributor-ID validation, canonical version syntax,
 the four-way causal comparison, join, and Snap order.
@@ -178,6 +194,11 @@ one test.
 
 ### Phase 2 — Paths and trees (§2)
 
+**Start here.**
+- Read: `../SPEC.md` §2, lines 53–85, and §6.2's namespace paragraph, lines 340–356.
+- Builds on: `Contracts.scala` (`TrackedPath` and its unsigned-UTF-8 `Ordering`, `Tree`).
+- Acceptance cases it moves: `02-init-paths.yaml`, `11-namespace-conflicts.yaml`, `25-config-version-path-boundaries.yaml`.
+
 **Goal.** `Paths.scala`: tracked-path validation, prefix-freedom, and the
 ancestor/descendant queries the namespace rule needs.
 
@@ -215,6 +236,11 @@ mutating `isPrefixOf` to a plain `startsWith` fails the `a/bc` case.
 ---
 
 ### Phase 3 — Text and edit scripts (§4.4)
+
+**Start here.**
+- Read: `../SPEC.md` §4.4, lines 253–272, plus §4.3, lines 226–252.
+- Builds on: `Contracts.scala` (`EditOp`, `Change`, `FileBytes`).
+- Acceptance cases it moves: `06-binary-and-empty.yaml`, `23-strict-validation-matrix.yaml`, `26-portability-and-failure-safety.yaml`.
 
 **Goal.** `Text.scala`: text detection, canonical tokenization, and edit-script
 validation and application.
@@ -264,6 +290,11 @@ mutating the splitter to split *before* LF, or dropping the NUL check, fails.
 
 ### Phase 4 — Canonical diff (§5)
 
+**Start here.**
+- Read: `../SPEC.md` §5, lines 289–321 — the recurrence is the specification, not a hint.
+- Builds on: `Text.scala` (tokenization), `Contracts.scala` (`EditOp`).
+- Acceptance cases it moves: `05-diff-goldens.yaml`, `21-version-algebra.yaml`.
+
 **Goal.** `Diff.scala`: the one deterministic token diff used by patch creation,
 displayed diffs, and OT.
 
@@ -303,6 +334,11 @@ mutating the tie rule to `<` instead of `<=` fails the tie golden.
 
 ### Phase 5 — Operational transform (§6.3)
 
+**Start here.**
+- Read: `../SPEC.md` §6.3, lines 374–397, and §6.5, lines 431–440.
+- Builds on: `Text.scala`, `Diff.scala`.
+- Acceptance cases it moves: `22-ot-matrix.yaml`, `18-three-way-convergence.yaml`, `09-merge-text.yaml`.
+
 **Goal.** `Ot.scala`: transform an incoming text edit through an aggregate
 context edit.
 
@@ -336,6 +372,11 @@ demoting the `Q insert` row below `P insert` fails the concurrent-insert case.
 ---
 
 ### Phase 6 — Repository JSON and validation (§4.1, §4.5, §3.5)
+
+**Start here.**
+- Read: `../SPEC.md` §4.1–§4.5, lines 154–288, and §3.5, lines 140–151.
+- Builds on: `Versions.scala`, `Paths.scala`, `Text.scala`.
+- Acceptance cases it moves: `15-repository-validation.yaml`, `23-strict-validation-matrix.yaml`, `27-history-canonicality.yaml`, `16-dot-collision.yaml`.
 
 **Goal.** `RepositoryJson.scala` and `Validation.scala`: strict parse and
 canonical serialization of the repository value, and the six validation passes.
@@ -401,6 +442,11 @@ CLI exists.
 
 ### Phase 7 — Deterministic replay (§6.1, §6.2, §6.4, §6.5)
 
+**Start here.**
+- Read: `../SPEC.md` §6 in full, lines 322–440 — read §6.2 twice.
+- Builds on: `Diff.scala`, `Ot.scala`, `Text.scala`, `Paths.scala`, `Versions.snapOrder`. Read `Diff.scala` and `Ot.scala` properly; the plan alone does not carry this phase.
+- Acceptance cases it moves: `17-concurrent-creates.yaml`, `18-three-way-convergence.yaml`, `10-merge-conflicts.yaml`, `11-namespace-conflicts.yaml`, `22-ot-matrix.yaml`.
+
 **Goal.** `Replay.scala`: materialize a version from the empty tree, resolving
 concurrency deterministically and collecting warnings.
 
@@ -463,6 +509,11 @@ property fails.
 
 ### Phase 8 — Workspace and filesystem (§2, §10)
 
+**Start here.**
+- Read: `../SPEC.md` §2, lines 53–85, §7.1, lines 456–464, and §10, lines 706–735.
+- Builds on: `Contracts.scala` (`Tree`, `FileBytes`), `Paths.scala`.
+- Acceptance cases it moves: `01-init.yaml`, `02-init-paths.yaml`, `08-unsupported-entries.yaml`, `20-dirty-merge.yaml`, `26-portability-and-failure-safety.yaml`.
+
 **Goal.** `Workspace.scala`: repository discovery, working-tree scan,
 materialization, and the mutation ordering §10 fixes.
 
@@ -515,6 +566,11 @@ a temporary directory; nothing here may read the process working directory.
 
 ### Phase 9 — Configuration (§8)
 
+**Start here.**
+- Read: `../SPEC.md` §8, lines 661–683, and §7.2, lines 465–471.
+- Builds on: `Versions.contributorId`, `Contracts.Configuration`.
+- Acceptance cases it moves: `03-configuration.yaml`, `25-config-version-path-boundaries.yaml`.
+
 **Goal.** `Config.scala`: local-over-global resolution.
 
 **SPEC references.** §8 in full; §7.2 (the `config` command's writes).
@@ -546,6 +602,11 @@ a temporary directory; nothing here may read the process working directory.
 ---
 
 ### Phase 10 — Presentation and error rendering (§7.11, §10)
+
+**Start here.**
+- Read: `../SPEC.md` §7.11, lines 594–660, and §10, lines 706–735.
+- Builds on: `Streams.scala` (the injected TTY flags), `Contracts.Presentation`.
+- Acceptance cases it moves: `28-terminal-presentation.yaml`.
 
 **Goal.** `Presentation.scala`: presentation selection and every styled record.
 
@@ -597,6 +658,11 @@ can cover.
 ---
 
 ### Phase 11 — Diff rendering and the command layer (§7.1–§7.8)
+
+**Start here.**
+- Read: `../SPEC.md` §7.1–§7.8, lines 456–581, plus §7.6's block format.
+- Builds on: every module above — this is the phase that assembles them.
+- Acceptance cases it moves: `04-commit-status-log.yaml`, `05-diff-goldens.yaml`, `07-revert.yaml`, `09-merge-text.yaml`, `14-cli-errors.yaml`, `20-dirty-merge.yaml`, `24-cli-grammar-matrix.yaml`.
 
 **Goal.** `DiffRender.scala` and `Commands.scala`: one function per command,
 plus the unified-style diff renderer.
@@ -673,6 +739,11 @@ server), and `28-terminal-presentation.yaml` (its final steps check that the
 
 ### Phase 12 — HTTP (§7.9, §9)
 
+**Start here.**
+- Read: `../SPEC.md` §7.9, lines 582–589, and §9, lines 684–705.
+- Builds on: `RepositoryJson.scala`, `Validation.scala`, `Streams.scala`.
+- Acceptance cases it moves: `12-http-server.yaml`, `13-http-client.yaml`, `26-portability-and-failure-safety.yaml`, `28-terminal-presentation.yaml`.
+
 **Goal.** `Http.scala`: the read-only server and the single-GET client.
 
 **SPEC references.** §7.9 (`--serve` startup, binding, port, signals), §9 (the
@@ -708,6 +779,11 @@ one resource, its methods and status codes, and the client's rules).
 ---
 
 ### Phase 13 — Final verification
+
+**Start here.**
+- Read: `tracking/progress.md` — what is already checked, and against what evidence.
+- Builds on: the whole tree.
+- Acceptance cases it moves: all 28.
 
 Run each and read the output; a run reporting `Total 0` or `No tests to run` is
 not a pass.
