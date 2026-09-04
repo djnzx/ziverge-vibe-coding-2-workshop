@@ -121,7 +121,7 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
     forAll(genPipeline)(cs => Parser.parse(source(cs)) == expected(cs))
 
   property("extra whitespace between tokens does not change the AST"):
-    forAll(genPipeline, Gen.choose(1, 6), Gen.oneOf(" ", "\t")): (cs, n, ws) =>
+    forAll(genPipeline, Gen.choose(1, 6), Gen.oneOf(" ", "\t", "\n")): (cs, n, ws) =>
       Parser.parse(source(cs, ws * n)) == expected(cs)
 
   property("a trailing comment never changes the AST"):
@@ -327,3 +327,58 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
       Parser.parse(input) match
         case Right(_)                       => false
         case Left(ShellError.Parse(_, col)) => col >= 1 && col <= input.length + 1
+
+  // --- line continuation (SPEC 3.1, 7.3) ---
+  //
+  // `logicalLines` is a total function: every script splits into some sequence of lines,
+  // so there is no rejection axis here. Round-trip and totality carry the weight, plus a
+  // structural invariant — a line handed to the parser is never still awaiting a join.
+
+  /** Segment characters exclude `\` and newline so no accidental continuation is built. */
+  private val segmentChar: Gen[Char] =
+    Gen.oneOf(Gen.alphaNumChar, Gen.oneOf(' ', '\t', '|', '"', '#', '-', '.', '='))
+
+  private val genSegment: Gen[String] = Gen.nonEmptyListOf(segmentChar).map(_.mkString)
+
+  private def genSegments(min: Int): Gen[List[String]] =
+    Gen.choose(min, 5).flatMap(Gen.listOfN(_, genSegment))
+
+  property("continuations rejoin exactly the segments they were rendered from"):
+    forAll(genSegments(2)): segments =>
+      Parser.logicalLines(segments.mkString("\\\n")) == Vector(segments.mkString("\n"))
+
+  property("a script with no continuations splits into exactly its physical lines"):
+    forAll(genSegments(1)): lines =>
+      Parser.logicalLines(lines.mkString("\n")) == lines.toVector
+
+  property("a trailing newline does not add an empty logical line"):
+    forAll(genSegments(1)): lines =>
+      Parser.logicalLines(lines.mkString("\n") + "\n") == lines.toVector
+
+  private val continuationFragment: Gen[String] =
+    Gen.oneOf("\\", "\\\\", "\n", "\\\n", "\n\n", "ls", " ", "\t", "|", "#", "\"", "a\\", "")
+
+  private val continuationFuzz: Gen[String] =
+    Gen.choose(0, 12).flatMap(Gen.listOfN(_, continuationFragment)).map(_.mkString)
+
+  property("every logical line is complete: none is still awaiting a continuation"):
+    forAll(continuationFuzz): s =>
+      Parser.logicalLines(s).forall(line => !Parser.continuesLine(line))
+
+  property("joining never yields more logical lines than there were physical ones"):
+    forAll(continuationFuzz): s =>
+      Parser.logicalLines(s).size <= s.split("\n", -1).length
+
+  property("logicalLines is total: arbitrary input yields a result, never an exception"):
+    forAll: (s: String) =>
+      val lines = Parser.logicalLines(s)
+      lines.isEmpty || lines.nonEmpty
+
+  property("a pipeline split across continued lines parses like the one-line form"):
+    forAll(genPipeline): cs =>
+      val oneLine   = source(cs)
+      val continued = cs.map(c => (c.name :: c.args.map(_.text)).mkString(" ")).mkString(" \\\n| ")
+      val logical   = Parser.logicalLines(continued)
+      // `isRight` keeps this from passing vacuously when both forms error.
+      Parser.parse(oneLine).isRight && logical.sizeIs == 1 &&
+      Parser.parse(logical.head) == Parser.parse(oneLine)

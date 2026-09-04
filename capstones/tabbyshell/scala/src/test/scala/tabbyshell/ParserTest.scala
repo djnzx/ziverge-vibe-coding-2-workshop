@@ -176,3 +176,45 @@ class ParserTest extends munit.FunSuite:
 
   private def flag(name: String): Arg                   = Arg.Flag(name, None)
   private def flagOf(name: String, value: Literal): Arg = Arg.Flag(name, Some(value))
+
+  // --- line continuation (SPEC 3.1, 7.3) ---
+
+  test("a line with no trailing backslash does not continue"):
+    assert(!Parser.continuesLine("ls | first 3"))
+
+  test("a line ending in a backslash continues"):
+    assert(Parser.continuesLine("ls \\"))
+
+  test("a script without continuations yields one logical line per physical line"):
+    assertEquals(Parser.logicalLines("ls\npwd\n"), Vector("ls", "pwd"))
+
+  test("a trailing backslash joins the next line with a newline in its place"):
+    assertEquals(Parser.logicalLines("ls \\\n| first 3"), Vector("ls \n| first 3"))
+
+  test("continuations chain across several physical lines"):
+    assertEquals(
+      Parser.logicalLines("ls \\\n  | sort-by name \\\n  | get name"),
+      Vector("ls \n  | sort-by name \n  | get name")
+    )
+
+  test("a continuation at end of input drops the backslash and keeps the newline"):
+    assertEquals(Parser.logicalLines("ls \\"), Vector("ls \n"))
+
+  test("a blank line is its own logical line"):
+    assertEquals(Parser.logicalLines("ls\n\npwd"), Vector("ls", "", "pwd"))
+
+  // --- newline as inter-token whitespace ---
+
+  test("a newline separates tokens like a space"):
+    assertEquals(Parser.parse("ls\n| first 3"), pipeline(cmd("ls"), cmd("first", int(3))))
+
+  test("a continued pipeline parses as a single pipeline"):
+    val logical = Parser.logicalLines("ls \\\n  | sort-by name \\\n  | get name")
+    assertEquals(logical.size, 1)
+    assertEquals(
+      Parser.parse(logical.head),
+      pipeline(cmd("ls"), cmd("sort-by", str("name")), cmd("get", str("name")))
+    )
+
+  test("a comment ends at the newline, not at the end of a continued buffer"):
+    assertEquals(Parser.parse("ls # note\n| first 3"), pipeline(cmd("ls"), cmd("first", int(3))))

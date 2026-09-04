@@ -20,7 +20,7 @@ object Parser:
 
   /** Inter-token whitespace, comments included. */
   private val sp0: P0[Unit] =
-    (P.charsWhile(c => c == ' ' || c == '\t').void | comment).rep0.void
+    (P.charsWhile(c => c == ' ' || c == '\t' || c == '\n').void | comment).rep0.void
 
   /** Every token consumes its own trailing whitespace. */
   private def tok[A](p: P[A]): P[A] = p <* sp0
@@ -157,6 +157,24 @@ object Parser:
   private val pipelineP: P0[Pipeline] =
     (sp0 *> P.repSep(commandT, pipeT).?)
       .map(cs => Pipeline(cs.fold(Vector.empty[Command])(_.toList.toVector)))
+
+  /** True when `line` ends in a backslash, i.e. the next physical line continues it. */
+  def continuesLine(line: String): Boolean = line.endsWith("\\")
+
+  /** Split a script into logical lines, resolving line continuations (SPEC 3.1).
+    *
+    * A physical line ending in `\` is joined with the next: the backslash is dropped and a newline takes its place, so the parser sees the join as inter-token
+    * whitespace.
+    */
+  def logicalLines(script: String): Vector[String] =
+    val physical = script.split("\n", -1).toVector
+    // A script ending in a newline has one trailing empty field that is not a line.
+    val lines               = if physical.sizeIs > 0 && physical.last.isEmpty then physical.init else physical
+    val (complete, pending) = lines.foldLeft((Vector.empty[String], "")) { case ((done, buffer), line) =>
+      if continuesLine(line) then (done, buffer + line.dropRight(1) + "\n")
+      else (done :+ (buffer + line), "")
+    }
+    if pending.isEmpty then complete else complete :+ pending
 
   def parse(input: String): Either[ShellError, Pipeline] =
     pipelineP.parseAll(input) match

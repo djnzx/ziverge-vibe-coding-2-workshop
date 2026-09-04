@@ -120,7 +120,8 @@ package (standard Java/Scala layout); tests mirror it under
 ```
 src/main/scala/tabbyshell/
   Value.scala       — Value ADT smart constructors (Table rejects ragged rows)
-  Parser.scala      — cats-parse tokenizer + pipeline grammar → Pipeline
+  Parser.scala      — line-continuation pre-pass (`logicalLines`), then the
+                      cats-parse tokenizer + pipeline grammar → Pipeline
   Renderer.scala    — pure render(value, opts) -> String
   Builtins.scala    — one function per command + dispatch table
   Executor.scala    — pipeline interpreter + AI-external fallback dispatch
@@ -154,3 +155,7 @@ packaged layout that path is absent and the mtime reads 0, so pass
 - Numeric literals that do not fit `Int64` are a parse error, never a silent
   wrap or a thrown `NumberFormatException` (SPEC 3.1). Widen through `BigInt` /
   `BigDecimal` before narrowing.
+- Split input with `Parser.logicalLines` before parsing, never on `\n` directly:
+  a continued pipeline keeps its newlines, and the grammar treats `\n` as
+  inter-token whitespace (SPEC 3.1). `Parser.continuesLine` is what the REPL
+  needs for its two-space continuation prompt (SPEC 7.3).

@@ -80,7 +80,7 @@ Current parser properties:
 | Property                          | Invariant                                                 |
 |-----------------------------------|-----------------------------------------------------------|
 | generated pipeline round-trips    | source text built from an AST parses back to that AST     |
-| whitespace insensitivity          | extra spaces/tabs between tokens do not change the AST    |
+| whitespace insensitivity          | extra spaces, tabs or newlines never change the AST       |
 | operators need no whitespace      | `size>0b` parses identically to `size > 0b`               |
 | trailing comment                  | `# …` appended to a pipeline never changes the AST        |
 | integer round-trip                | every `Long` survives text → `Literal.Int`                |
@@ -95,6 +95,11 @@ Current parser properties:
 | totality                          | arbitrary input yields `Either`, never an exception       |
 | totality under grammar fuzz       | same, for strings built from grammar fragments            |
 | error column bounds               | a reported column is always within the input              |
+| continuation round-trip           | segments rendered with `\` rejoin to exactly those segments |
+| continuation fixpoint             | a script with no `\` splits into its physical lines       |
+| trailing newline                  | does not add an empty logical line                        |
+| logical lines are complete        | no line handed to the parser still awaits a join          |
+| continued pipeline                | parses identically to the same pipeline on one line       |
 
 Totality only says the parser returns *something*. A second group says what it must
 **refuse** — a parser that accepted every input would satisfy totality and fail all of
@@ -121,9 +126,10 @@ The totality and out-of-range properties are not decoration: they caught a real
 `NumberFormatException` on `x 99999999999999999999`, which is now a parse error
 (and is pinned by SPEC §3.1).
 
-These are checked by mutation, not taken on faith: removing the `tokenEnd` guard from
+These are checked by mutation, not taken on faith. Removing the `tokenEnd` guard from
 `Parser.scala` (so a literal may run into ident characters) is caught by 11 properties,
-4 of them rejection properties. A property suite that survives a mutation like that is
+4 of them rejection properties; joining continued lines without their newline is caught
+by 5; keeping the trailing empty field from the line split is caught by 2. A property suite that survives a mutation like that is
 not testing anything.
 
 Both techniques are written up as repository skills, and apply to the parsers still to
@@ -143,7 +149,6 @@ Each gets its properties when it is written, test-first:
 
 | Parser                       | SPEC       | Natural properties                                  |
 |------------------------------|------------|-----------------------------------------------------|
-| line-continuation pre-pass   | §3.1, §7.3 | joining is associative; a line without `\\` is a fixpoint |
 | JSON (`open *.json`, AI)     | §5.2, §5.15| `Value` → `to json` → parse round-trips              |
 | CSV (`open *.csv`)           | §5.2       | `Table` → `to csv` → parse round-trips; RFC 4180 quoting |
 | CLI arguments                | §8         | flag order is irrelevant; unknown flags are rejected |

@@ -75,7 +75,11 @@ dash       := '-'                   (standalone; used by `cd -`)
 comment    := '#' until end of line
 ```
 
-**Whitespace:** spaces and tabs separate tokens; newlines end a pipeline.
+**Whitespace:** spaces and tabs separate tokens. A newline ends a pipeline *at the
+reader*: input is split into logical lines before anything is parsed. A newline that
+survives into a logical line — which happens only via line continuation, below — is
+inter-token whitespace, exactly like a space. The parser therefore never sees a
+newline that terminates a pipeline.
 
 **Line continuation:** a line ending in a backslash followed immediately by a
 newline is joined with the next line (the backslash and the newline are
@@ -83,6 +87,11 @@ dropped, then a single `\n` is appended to the buffer). This applies in both
 REPL mode (§7.3) and `--eval-file` mode (§8). It is a lexical feature, not
 a grammar one — by the time the parser sees the token stream, continuations
 have already been resolved.
+
+Because the joined buffer keeps a `\n` at each join point, and `\n` is inter-token
+whitespace (above), a continued pipeline parses as a single pipeline. A `#` comment
+still ends at the next newline, so a comment on one continued physical line comments
+out the remainder of *that* line only, not the rest of the pipeline.
 
 **Comments:** `#` to end of line (anywhere outside a string literal). Comments
 work in both REPL input and `--eval-file` scripts.
