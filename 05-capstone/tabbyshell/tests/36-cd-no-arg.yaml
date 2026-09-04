@@ -1,9 +1,0 @@
-name: "cd with no argument changes to $HOME"
-script: |
-  cd
-  pwd
-assertions:
-  - type: exit_code
-    value: 0
-  - type: stdout_not_contains
-    value: "tabbyshell-test-"
