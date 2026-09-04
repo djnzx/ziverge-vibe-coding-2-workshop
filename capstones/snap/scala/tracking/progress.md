@@ -252,5 +252,5 @@ Unchecked until each command has actually been run and its output read.
 - [x] `../verify --lang scala` passes **28 of 28**
 - [ ] Manual: `SNAP_COLOR=auto` on a real terminal, with and without `NO_COLOR`
 - [ ] Manual: Ctrl-C on `snap --serve` exits 0
-- [ ] Manual: a large binary file survives `commit` then `revert` byte-for-byte
+- [x] Manual: a 1 MiB random binary file survived `commit` → delete → `revert` byte-for-byte (matching SHA-256)
 - [ ] IRON RULES: docs updated in this change; proven patterns offered as skills; bulky subtasks run in subagents
