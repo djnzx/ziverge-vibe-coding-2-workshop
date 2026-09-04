@@ -5,21 +5,24 @@
 Implement the Scala TabbyShell application in this directory only. The
 behavioral source of truth is [`../../SPEC.md`](../../SPEC.md); the YAML cases
 in [`../../tests`](../../tests) are its executable conformance suite. Preserve
-the current Scala 3 / JDK / cats-parse / Circe / fansi approach unless a change is
-needed by the specification, in which case update the applicable Scala docs in
-the same change.
+the current Scala 3 / JDK / cats-parse / Circe / Kantan CSV / fansi approach
+unless a change is needed by the specification, in which case update the
+applicable Scala docs in the same change.
 
 Current baseline (2026-09-04):
 
 - `Value.scala`, `Parser.scala`, and `Renderer.scala` are implemented and have
   focused example and property tests.
-- `Main.scala` is only a stub. `Builtins`, `Executor`, `Ai`, `Repl`, and
-  `Terminal` do not exist yet.
-- `ShellError` only models `Parse` and `TypeMismatch`; `ShellState` is missing
-  `home` and `prevCwd`, so the application contract is not yet represented.
-- `sbt "testOnly tabbyshell.*"` passes: 148 tests across 6 suites (0 failures,
-  errors, or ignored tests). This proves the existing isolated layers, not
-  end-to-end conformance.
+- `Arguments.scala` preserves command-relevant argument provenance;
+  `Contracts.scala` models complete shell state and all SPEC §3.3 errors.
+- `Builtins.scala`, `JsonCodec.scala`, and `CsvCodec.scala` implement the
+  Phase 2 filesystem/navigation boundary with Circe and core Kantan CSV RFC
+  4180 support.
+- `Main.scala` remains a stub; `Executor`, `Ai`, `Repl`, and `Terminal` are
+  still pending.
+- `sbt "testOnly tabbyshell.*"` passes: 192 tests across 11 suites (0 failures,
+  errors, or ignored tests). This proves isolated layers, not end-to-end
+  conformance.
 
 ## Delivery sequence
 
@@ -63,7 +66,7 @@ tested, with no thrown user-facing errors crossing module boundaries.
 **Exit criterion:** parsing produces only valid `Pipeline` values, command
 argument validation is reusable, and parser tests remain green.
 
-### 3. Implement data codecs before file-facing commands
+### 3. Implement data codecs before file-facing commands — completed 2026-09-04
 
 1. Add a JSON codec module using Circe's `Json` AST and parser, with an explicit
    `Value` ↔ `Json` conversion.
@@ -73,18 +76,20 @@ argument validation is reusable, and parser tests remain green.
      the same order; otherwise preserve it as `List[Record]`.
    - Serialize every `Value` according to SPEC §5.13 via an explicit `Json`
      mapping, Circe's two-space printer, and one trailing newline.
-2. Add an RFC 4180 CSV codec.
+2. Add an RFC 4180 CSV codec through core `kantan.csv`.
    - Read a header plus string-valued cells into a rectangular table.
-   - Parse quoted commas, quotes, and newlines; reject malformed/ragged input
-     as a user-facing command error rather than a host exception.
+   - Parse quoted commas, quotes, and newlines; map parser failures and reject
+     ragged input as user-facing command errors rather than host exceptions.
    - Write header and rows with correct quoting and deterministic newlines.
+   - Do not add `kantan.csv-cats` or `kantan.csv-java8`: neither integration is
+     needed by TabbyShell's `Either`-based, string-cell boundary.
 3. Write examples plus round-trip/rejection properties for JSON and CSV. Include
    uniform/non-uniform JSON records, embedded quotes/newlines, and empty tables.
 
 **Exit criterion:** `open`, `to`, and `save` can depend on codecs with no
 format-specific logic duplicated in their command functions.
 
-### 4. Implement filesystem and navigation builtins
+### 4. Implement filesystem and navigation builtins — completed 2026-09-04
 
 1. Add a path helper which makes paths absolute relative to `state.cwd` and
    expands only a leading `~/` using `state.home`.

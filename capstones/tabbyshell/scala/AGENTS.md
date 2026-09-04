@@ -101,6 +101,9 @@ repository root:
 - `org.typelevel::cats-parse` — tokenizer + pipeline grammar.
 - `io.circe::circe-parser` — JSON AST, parser, and pretty-printer used by
   `open *.json`, `to json`, and the AI response decoder.
+- `io.github.kantan-scala::kantan.csv` — RFC 4180 parsing and quoting for
+  `open *.csv` and `to csv`. Use the core module only: the application returns
+  Scala `Either` rather than Cats values and has no Java-time CSV codecs.
 - `com.lihaoyi::fansi` — every ANSI escape in SPEC 6.6. Nothing writes escape
   sequences by hand, in `main` or in tests.
 - `org.jline:jline` — terminal creation, line editing, persisted history, and
@@ -132,6 +135,10 @@ src/main/scala/tabbyshell/
                       must share a file with its type, and the enum is in Contracts.scala.
   Parser.scala      — line-continuation pre-pass (`logicalLines`), then the
                       cats-parse tokenizer + pipeline grammar → Pipeline
+  JsonCodec.scala   — explicit `Value` ↔ Circe `Json` conversion and JSON
+                      table promotion
+  CsvCodec.scala    — Kantan CSV adapter → string-cell `Value.Table`, plus
+                      TabbyShell error/line-ending policy
   Renderer.scala    — `RenderOpts` + pure `render(value, opts)`. The SPEC 6.3
                       compact form is `compact()`, not `inline()` — `inline` is a
                       Scala 3 soft keyword and cannot name a method.

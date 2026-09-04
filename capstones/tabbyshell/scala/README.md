@@ -12,17 +12,22 @@ built, tested, and organised.
 | Scala      | 3.9.0   | `ThisBuild / scalaVersion`                        |
 | JDK        | 21+     | verified on 25 and 26                             |
 | cats-parse   | 1.1.0   | tokenizer and pipeline grammar                     |
-| circe-parser | 0.14.15 | JSON AST, parser, and deterministic pretty printing |
+| circe-parser | 0.14.16 | JSON AST, parser, and deterministic pretty printing |
+| kantan.csv   | 0.12.0  | RFC 4180 parsing and quoting for CSV input/output   |
 | fansi        | 0.5.1   | every ANSI escape in SPEC §6.6                     |
-| JLine        | 3.30.0  | interactive terminal, line editing, and history    |
+| JLine        | 4.4.2   | interactive terminal, line editing, and history    |
 | MUnit        | 1.3.6   | example-based tests                                |
 | ScalaCheck   | 1.20.0  | property-based tests, via munit-scalacheck 1.3.1   |
 
 Production code otherwise uses only the JDK standard library. JSON is parsed and
 printed through Circe, but conversion between Circe's `Json` AST and TabbyShell's
 `Value` is explicit: generic derivation cannot enforce the table-promotion,
-insertion-order, and SPEC §5.13 shape rules. No escape sequence is written by hand
-either — fansi supplies them all, including the `dim` attribute (`fansi.Bold.Faint`)
+insertion-order, and SPEC §5.13 shape rules. CSV grammar and field quoting go
+through the core `kantan.csv` module; its adapter retains TabbyShell's
+string-cell table, rectangularity, error, and LF-output policies. Do not add
+`kantan.csv-cats` or `kantan.csv-java8` unless the application later gains a
+real use for their integrations. No escape sequence is written by hand either
+— fansi supplies them all, including the `dim` attribute (`fansi.Bold.Faint`)
 that §6.6 needs for borders and the index column.
 
 JLine is confined to `Terminal.scala` and interactive REPL startup. It supplies

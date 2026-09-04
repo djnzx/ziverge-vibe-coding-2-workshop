@@ -29,6 +29,7 @@ lazy val root = (project in file("."))
     libraryDependencies ++= Seq(
       "org.typelevel"  %% "cats-parse"       % "1.1.0",
       "io.circe"       %% "circe-parser"     % "0.14.16",
+      "io.github.kantan-scala" %% "kantan.csv" % "0.12.0",
       "com.lihaoyi"    %% "fansi"            % "0.5.1",
       "org.jline"       % "jline"            % "4.4.2",
       "org.scalameta"  %% "munit"            % "1.3.6"  % Test,

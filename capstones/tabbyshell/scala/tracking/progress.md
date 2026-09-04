@@ -38,13 +38,22 @@ unit suite alone never means the application is complete.
 
 ## Phase 2 — codecs and file commands
 
-- [ ] Implement and test Circe-based JSON parsing, table promotion, and pretty
-  serialization.
-- [ ] Implement and test RFC 4180 CSV parsing and serialization.
-- [ ] Implement path resolution relative to `ShellState` plus `~/` expansion.
-- [ ] Implement and test `pwd`, `cat`, and `open`.
-- [ ] Implement and test `ls`, including `-a`/`-l`, ordering, metadata, and errors.
-- [ ] Implement and test `cd`, `cd <path>`, `cd -`, and no-history errors.
+- [x] Implement and test Circe-based JSON parsing, insertion-ordered records,
+  uniform-record table promotion, two-space serialization, and exhaustive
+  `Json.fold` dispatch — `JsonCodecTest` (8 tests), 2026-09-04.
+- [x] Implement and test core `kantan.csv` 0.12.0 RFC 4180 parsing and
+  serialization, including quoted commas/quotes/newlines and ragged-input
+  rejection — `CsvCodecTest` (6 tests), 2026-09-04.
+- [x] Implement path resolution relative to `ShellState` plus leading `~/`
+  expansion — `BuiltinsTest` temporary-directory coverage, 2026-09-04.
+- [x] Implement and test state-driven `pwd`, `cat`, and extension-dispatched
+  `open` (`.json`, `.csv`, raw text) — `BuiltinsTest`, 2026-09-04.
+- [x] Implement and test `ls`, including `-a`/`-l`, case-sensitive ordering,
+  typed metadata, symlink classification, and `IoError` mapping —
+  `BuiltinsTest`, 2026-09-04.
+- [x] Implement and test `cd`, `cd <path>`, `cd -`, home navigation, state
+  propagation, no-history, missing-path, and non-directory errors —
+  `BuiltinsTest`, 2026-09-04.
 
 ## Phase 3 — structured-data commands
 
@@ -68,8 +77,9 @@ unit suite alone never means the application is complete.
 ## Final verification
 
 - [x] Run `sbt scalafmtAll` for the current change (2026-09-04).
-- [x] Run `sbt "testOnly tabbyshell.*"` after the current change — 8 suites,
-  166 tests, 0 failures/errors/ignored (2026-09-04; Phase 1 complete).
+- [x] Run `sbt "testOnly tabbyshell.*"` after the current change — 11 suites,
+  192 tests, 0 failures/errors/ignored (2026-09-04; Phase 2 complete).
+- [x] Run `sbt scalafmtCheckAll` after the current change (2026-09-04).
 - [ ] Run `sbt assembly`; confirm the shared launcher discovers the expected JAR.
 - [ ] Run all 50 YAML cases through `../verify --lang scala --implementation-root .`.
 - [ ] Add regression tests for any verifier failures discovered during implementation.
