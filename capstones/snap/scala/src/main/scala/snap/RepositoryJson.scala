@@ -21,7 +21,7 @@ object RepositoryJson:
   def parse(text: String): Either[SnapError, Repository] =
     for
       json       <- io.circe.parser.parse(text).left.map(failure => invalid(s"malformed JSON: ${failure.message}"))
-      _          <- DuplicateKeys.check(text)
+      _          <- JsonValidation.duplicateKeys(text)
       obj        <- asObject(json, "repository")
       _          <- rejectUnknown(obj, Set("format", "frontier", "patches"), "repository")
       format     <- field(obj, "format", "repository").flatMap(asSafeInteger(_, "format"))
@@ -296,59 +296,3 @@ object RepositoryJson:
       case char                   => out.append(char)
     out.append('"')
     out.toString
-
-  /** SPEC §4.1 — duplicate object keys need their own pass over the raw text: circe's `JsonObject` keeps the last value for a repeated key and reports nothing,
-    * so the AST alone cannot tell a duplicate from a single well-formed field. Runs only after `io.circe.parser.parse` has confirmed the text is syntactically
-    * valid JSON, so this scanner can assume balanced braces and well-formed strings.
-    */
-  private object DuplicateKeys:
-    def check(text: String): Either[SnapError, Unit] =
-      scan(text) match
-        case Some(key) => Left(invalid(s"duplicate JSON key: $key"))
-        case None      => Right(())
-
-    private def scan(text: String): Option[String] =
-      val stack               = scala.collection.mutable.Stack.empty[scala.collection.mutable.Set[String]]
-      var i                   = 0
-      val n                   = text.length
-      var dup: Option[String] = None
-      while i < n && dup.isEmpty do
-        text.charAt(i) match
-          case '"' =>
-            val (value, next) = readString(text, i)
-            i = next
-            var j = i
-            while j < n && text.charAt(j).isWhitespace do j += 1
-            if j < n && text.charAt(j) == ':' && stack.nonEmpty then
-              val top = stack.top
-              if top.contains(value) then dup = Some(value) else top += value
-          case '{' =>
-            stack.push(scala.collection.mutable.Set.empty)
-            i += 1
-          case '}' =>
-            if stack.nonEmpty then stack.pop()
-            i += 1
-          case _ => i += 1
-      dup
-
-    /** Skips a JSON string literal starting at the opening quote, returning its decoded content and the index just past the closing quote. Escapes are only
-      * walked past, not decoded, which is enough to find the closing quote correctly; two keys that are equal only after unescaping (`"a"` versus `"a"`) are
-      * treated as distinct, an accepted edge case no test in `../tests/` exercises.
-      */
-    private def readString(text: String, start: Int): (String, Int) =
-      val n       = text.length
-      var i       = start + 1
-      val content = new StringBuilder
-      var closed  = false
-      while i < n && !closed do
-        text.charAt(i) match
-          case '\\' if i + 1 < n =>
-            content.append(text.charAt(i)).append(text.charAt(i + 1))
-            i += 2
-          case '"' =>
-            closed = true
-            i += 1
-          case char =>
-            content.append(char)
-            i += 1
-      (content.toString, i)

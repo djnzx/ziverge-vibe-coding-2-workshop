@@ -96,7 +96,7 @@ against the exact scenarios those YAML files use, so passing them today is the e
 
 - [x] Explicit circe conversion — no derived codecs; unknown fields rejected at every object level (repository, patch, change, edit operation) —
       `RepositoryJson.parse`, one `rejectUnknown` example per level in `RepositoryJsonTest`
-- [x] Duplicate JSON keys rejected by a dedicated raw-text scanner (`RepositoryJson.DuplicateKeys`) run after circe confirms syntactic validity — circe's AST
+- [x] Duplicate JSON keys rejected by a dedicated raw-text scanner (`JsonValidation.duplicateKeys`) run after circe confirms syntactic validity — circe's AST
       silently keeps the last value and reports nothing, so the scan cannot be skipped
 - [x] Base64 `content` checked by decoding then re-encoding and comparing to the original text — catches non-canonical encodings
       `java.util.Base64.getDecoder` alone accepts (unused low bits in the final character), not just bad alphabet/padding
@@ -189,11 +189,13 @@ Workspace boundary landed 2026-09-05. `sbt "testOnly snap.WorkspaceTest"` report
 
 ## Phase 9 — Configuration (§8)
 
-- [ ] Local `.snap/config.json` wins; global is not read when local supplies an ID
-- [ ] Local without an ID falls through to `$HOME/.snapconfig.json`
-- [ ] Malformed, duplicate-field, unknown-field, or invalid-ID files that *are* read fail
-- [ ] Absent `$HOME` means unavailable, not an error
-- [ ] `HOME` is injected, never read at the point of use
+Configuration boundary landed 2026-09-05. `sbt "testOnly snap.ConfigTest"` reports `Total 10, Failed 0`; the full `sbt "testOnly snap.*"` suite reports `Total 271, Failed 0`. `JsonValidation` now shares raw duplicate-key detection between repository and configuration parsing, replacing the former `RepositoryJson.DuplicateKeys` helper.
+
+- [x] Local `.snap/config.json` wins; global is not read when local supplies an ID — malformed-global precedence example in `snap.ConfigTest`
+- [x] Local without an ID falls through to `$HOME/.snapconfig.json` — empty-local fallback example in `snap.ConfigTest`
+- [x] Malformed, duplicate-field, unknown-field, or invalid-ID files that *are* read fail — `snap.ConfigTest`
+- [x] Absent `$HOME` means unavailable, not an error — injected-`None` example in `snap.ConfigTest`
+- [x] `HOME` is injected, never read at the point of use — every `snap.ConfigTest` path is an explicit temporary directory
 
 ## Phase 10 — Presentation and error rendering (§7.11, §10)
 
