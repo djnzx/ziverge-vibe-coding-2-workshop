@@ -223,6 +223,7 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
       Parser.parse(s) match
         case Right(_)                       => true
         case Left(ShellError.Parse(_, col)) => col >= 1 && col <= s.length + 1
+        case Left(_)                        => false
 
   private val hugeDigits: Gen[String] =
     for
@@ -246,6 +247,7 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
       Parser.parse(s) match
         case Right(_)                       => true
         case Left(ShellError.Parse(_, col)) => col >= 1 && col <= s.length + 1
+        case Left(_)                        => false
 
   // --- rejection ---
   //
@@ -255,6 +257,7 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
   private def isRejected(input: String): Boolean = Parser.parse(input) match
     case Left(ShellError.Parse(_, _)) => true
     case Right(_)                     => false
+    case Left(_)                      => false
 
   /** Characters the SPEC 3.1 grammar has no production for. */
   private val notInGrammar: Gen[Char] = Gen.oneOf("&;$(){}[]@^*+,:?!`".toSeq)
@@ -327,6 +330,7 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
       Parser.parse(input) match
         case Right(_)                       => false
         case Left(ShellError.Parse(_, col)) => col >= 1 && col <= input.length + 1
+        case Left(_)                        => false
 
   // --- line continuation (SPEC 3.1, 7.3) ---
   //
