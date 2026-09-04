@@ -12,11 +12,14 @@ built, tested, and organised.
 | Scala      | 3.9.0   | `ThisBuild / scalaVersion`                        |
 | JDK        | 21+     | verified on 25 and 26                             |
 | cats-parse | 1.1.0   | tokenizer, pipeline grammar, JSON                 |
+| fansi      | 0.5.1   | every ANSI escape in SPEC §6.6                     |
 | MUnit      | 1.3.6   | example-based tests                               |
 | ScalaCheck | 1.20.0  | property-based tests, via munit-scalacheck 1.3.1  |
 
 Production code otherwise uses only the JDK standard library. There is no JSON
-library: JSON is parsed with cats-parse and emitted by hand per SPEC §5.13.
+library: JSON is parsed with cats-parse and emitted by hand per SPEC §5.13. No
+escape sequence is written by hand either — fansi supplies them all, including the
+`dim` attribute (`fansi.Bold.Faint`) that §6.6 needs for borders and the index column.
 
 ## Layout
 
@@ -116,6 +119,8 @@ pins the exact golden strings:
 | filesize shape                    | always a magnitude and one of B/KB/MB/GB/TB               |
 | no scientific notation            | a float never renders as `1.0E9`                          |
 | totality                          | nested values with control characters never throw         |
+| colour-off is plain               | `fansi.Str(out).plainText == out`                          |
+| colour is additive                | stripping colour returns the colour-off bytes exactly     |
 
 Totality only says the parser returns *something*. A second group says what it must
 **refuse** — a parser that accepted every input would satisfy totality and fail all of

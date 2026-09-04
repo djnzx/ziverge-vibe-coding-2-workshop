@@ -130,6 +130,8 @@ suite is necessary, not sufficient; `../verify --lang scala
 
 - No `return`, `asInstanceOf`, `isInstanceOf`, or `null` — WartRemover fails the
   build. Errors are `Either[ShellError, _]`; do not throw across module edges.
+- Never hand-write an ANSI escape, in `main` or in tests — fansi owns them, and
+  test expectations are built with fansi so they survive a library change.
 - The renderer takes `now` from `RenderOpts`; builtins take `cwd` from
   `ShellState`. Neither reads the clock or the process cwd directly — that is
   what makes cross-language output byte-identical.

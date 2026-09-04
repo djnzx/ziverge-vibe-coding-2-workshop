@@ -16,6 +16,10 @@ object Renderer:
     case Value.List(items)                => renderList(items, opts)
     case scalarValue                      => scalar(scalarValue, opts) + "\n"
 
+  /** Errors render as `✗ <message>`, bold red when colour is on (SPEC 6.6, 7.5). */
+  def renderError(error: ShellError, opts: RenderOpts): String =
+    paint("\u2717 " + error.message, errorAttrs, opts) + "\n"
+
   /** The compact JSON-ish form used inside cells and for non-uniform lists (SPEC 6.3). */
   def compact(value: Value, opts: RenderOpts): String = value match
     case Value.Str(s)     => "\"" + jsonEscape(s) + "\""
@@ -84,57 +88,87 @@ object Renderer:
     val year  = (yoe + era * 400) + (if month <= 2 then 1 else 0)
     String.format(Locale.ROOT, "%04d-%02d-%02d", year, month, day)
 
+  // --- colour (SPEC 6.6) ---
+  //
+  // fansi owns the escape sequences; nothing here writes ANSI by hand. Attributes are
+  // applied only to a cell's content, never to its padding, so widths stay computed
+  // from plain text and colour-off output is unchanged byte for byte.
+
+  private val dimAttrs    = fansi.Bold.Faint
+  private val headerAttrs = fansi.Bold.On ++ fansi.Color.Cyan
+  private val errorAttrs  = fansi.Bold.On ++ fansi.Color.Red
+
+  private def paint(text: String, attrs: fansi.Attrs, opts: RenderOpts): String =
+    if !opts.color then text
+    else attrs(fansi.Str(text, errorMode = fansi.ErrorMode.Sanitize)).render
+
+  /** `Null`, `Float` and `Str` are deliberately left uncoloured (SPEC 6.6). */
+  private def attrsFor(value: Value): fansi.Attrs = value match
+    case Value.Int(_) | Value.Filesize(_) => fansi.Color.Green
+    case Value.Date(_)                    => fansi.Color.Yellow
+    case Value.Bool(true)                 => fansi.Color.Green
+    case Value.Bool(false)                => fansi.Color.Red
+    case _                                => fansi.Attrs.Empty
+
   // --- grid layout (SPEC 6.1, 6.2) ---
 
-  private def cellText(value: Value, opts: RenderOpts): String =
-    if value.isScalar then scalar(value, opts) else compact(value, opts)
+  private final case class Cell(text: String, attrs: fansi.Attrs)
+
+  private def cellOf(value: Value, opts: RenderOpts): Cell =
+    Cell(if value.isScalar then scalar(value, opts) else compact(value, opts), attrsFor(value))
+
+  private def plainCell(text: String): Cell = Cell(text, fansi.Attrs.Empty)
+  private def indexCell(text: String): Cell = Cell(text, dimAttrs)
 
   private def width(s: String): Int = s.codePointCount(0, s.length)
 
   private def truncate(s: String, max: Int): String =
     if width(s) <= max then s
-    else s.substring(0, s.offsetByCodePoints(0, max - 1)) + "…"
-
-  private def pad(s: String, cellWidth: Int, rightAlign: Boolean): String =
-    val fill = " " * (cellWidth - width(s))
-    if rightAlign then fill + s else s + fill
+    else s.substring(0, s.offsetByCodePoints(0, max - 1)) + "\u2026"
 
   private def grid(
     headers: Vector[String],
-    rows: Vector[Vector[String]],
+    rows: Vector[Vector[Cell]],
     rightAlign: Vector[Boolean],
     opts: RenderOpts
   ): String =
-    val capped                                                 = (headers +: rows).map(_.map(truncate(_, opts.maxColWidth)))
-    val widths                                                 = headers.indices.map(i => capped.map(row => width(row(i))).max).toVector
+    val cappedHeaders = headers.map(truncate(_, opts.maxColWidth))
+    val cappedRows    = rows.map(_.map(c => c.copy(text = truncate(c.text, opts.maxColWidth))))
+    val widths        = headers.indices
+      .map(i => (width(cappedHeaders(i)) +: cappedRows.map(r => width(r(i).text))).max)
+      .toVector
+    val bar                                                    = paint("\u2502", dimAttrs, opts)
     def rule(left: String, mid: String, right: String): String =
-      widths.map(w => "─" * (w + 2)).mkString(left, mid, right)
-    def line(cells: Vector[String]): String =
+      paint(widths.map(w => "\u2500" * (w + 2)).mkString(left, mid, right), dimAttrs, opts)
+    def line(cells: Vector[Cell]): String =
       cells.zipWithIndex
-        .map((c, i) => " " + pad(c, widths(i), rightAlign(i)) + " ")
-        .mkString("│", "│", "│")
-    val top    = rule("╭", "┬", "╮")
-    val middle = rule("├", "┼", "┤")
-    val bottom = rule("╰", "┴", "╯")
-    (Vector(top, line(capped.head), middle) ++ capped.tail.map(line) :+ bottom)
-      .mkString("", "\n", "\n")
+        .map: (c, i) =>
+          val fill = " " * (widths(i) - width(c.text))
+          val body = paint(c.text, c.attrs, opts)
+          if rightAlign(i) then " " + fill + body + " " else " " + body + fill + " "
+        .mkString(bar, bar, bar)
+    val header = line(cappedHeaders.map(h => Cell(h, headerAttrs)))
+    val top    = rule("\u256d", "\u252c", "\u256e")
+    val middle = rule("\u251c", "\u253c", "\u2524")
+    val bottom = rule("\u2570", "\u2534", "\u256f")
+    (Vector(top, header, middle) ++ cappedRows.map(line) :+ bottom).mkString("", "\n", "\n")
 
   private def renderTable(
     columns: Vector[String],
     rows: Vector[Vector[Value]],
     opts: RenderOpts
   ): String =
-    val body    = rows.zipWithIndex.map((row, i) => i.toString +: row.map(cellText(_, opts)))
+    val body    = rows.zipWithIndex.map((row, i) => indexCell(i.toString) +: row.map(cellOf(_, opts)))
     val numeric = columns.indices.map(i => rows.forall(_(i).isNumeric)).toVector
     grid("#" +: columns, body, true +: numeric, opts)
 
   private def renderRecord(fields: Vector[(String, Value)], opts: RenderOpts): String =
-    val body = fields.map((key, v) => Vector(key, cellText(v, opts)))
+    val body = fields.map((key, v) => Vector(plainCell(key), cellOf(v, opts)))
     grid(Vector("key", "value"), body, Vector(false, fields.forall(_._2.isNumeric)), opts)
 
   private def renderList(items: Vector[Value], opts: RenderOpts): String =
     if items.forall(_.isScalar) then
-      val body = items.zipWithIndex.map((v, i) => Vector(i.toString, cellText(v, opts)))
+      val body = items.zipWithIndex.map((v, i) => Vector(indexCell(i.toString), cellOf(v, opts)))
       grid(Vector("#", "value"), body, Vector(true, items.forall(_.isNumeric)), opts)
     else
       uniformRecordKeys(items) match

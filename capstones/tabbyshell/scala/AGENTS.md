@@ -100,6 +100,8 @@ repository root:
 
 - `org.typelevel::cats-parse` — tokenizer + pipeline grammar, and the JSON
   parser used by `open *.json` and the AI response decoder.
+- `com.lihaoyi::fansi` — every ANSI escape in SPEC 6.6. Nothing writes escape
+  sequences by hand, in `main` or in tests.
 - `org.scalameta::munit`, `org.scalameta::munit-scalacheck`,
   `org.scalacheck::scalacheck` (test only).
 
@@ -160,6 +162,14 @@ packaged layout that path is absent and the mtime reads 0, so pass
 - Numeric literals that do not fit `Int64` are a parse error, never a silent
   wrap or a thrown `NumberFormatException` (SPEC 3.1). Widen through `BigInt` /
   `BigDecimal` before narrowing.
+- Colour goes through fansi — `fansi.Bold.Faint` for dim, `fansi.Bold.On ++
+  fansi.Color.Cyan` for headers, and so on. Never write an escape sequence
+  literally, and assert on `fansi....render` in tests rather than on raw bytes,
+  so the tests survive a library change. `fansi.Str(out).plainText` is the way
+  to check output is escape-free.
+- Attributes decorate a cell's *content*, never its padding: widths are computed
+  from plain text so that colour is purely additive and colour-off output stays
+  byte-identical (SPEC 10).
 - Format every number and date through `String.format(Locale.ROOT, ...)`. The
   default locale would swap the decimal separator or the digits and silently
   break the byte-exactness guarantee in SPEC 10.
