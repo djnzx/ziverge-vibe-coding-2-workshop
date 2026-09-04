@@ -35,3 +35,16 @@ extension (value: Value)
   def isNumeric: Boolean = value match
     case Value.Int(_) | Value.Float(_) | Value.Filesize(_) => true
     case _                                                 => false
+
+/** Converts the parser's closed literal vocabulary into the corresponding pipeline value. Commands use this boundary rather than re-encoding literal cases
+  * individually.
+  */
+extension (literal: Literal)
+
+  def toValue: Value = literal match
+    case Literal.Str(value)      => Value.Str(value)
+    case Literal.Int(value)      => Value.Int(value)
+    case Literal.Float(value)    => Value.Float(value)
+    case Literal.Bool(value)     => Value.Bool(value)
+    case Literal.Filesize(bytes) => Value.Filesize(bytes)
+    case Literal.Null            => Value.Null

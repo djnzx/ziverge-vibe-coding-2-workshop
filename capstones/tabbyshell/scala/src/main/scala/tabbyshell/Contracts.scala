@@ -64,4 +64,4 @@ final case class ShellState(
   *
   * It lets the executor preserve purely functional pipeline semantics while making `cd`'s single permitted state change explicit.
   */
-final case class ExecutionResult(value: Value, state: ShellState)
+final case class ExecutionResult(value: Value, state: ShellState, warnings: Vector[String] = Vector.empty)

@@ -108,6 +108,8 @@ repository root:
   sequences by hand, in `main` or in tests.
 - `org.jline:jline` — terminal creation, line editing, persisted history, and
   typed Ctrl-C/EOF events for the interactive REPL only.
+- `com.monovore::decline` — strict parsing for the five supported application
+  flags. Use its parser API; do not add `decline-effect` or a `CommandApp`.
 - `org.scalameta::munit`, `org.scalameta::munit-scalacheck`,
   `org.scalacheck::scalacheck` (test only).
 

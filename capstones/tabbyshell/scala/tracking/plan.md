@@ -16,13 +16,15 @@ Current baseline (2026-09-04):
 - `Arguments.scala` preserves command-relevant argument provenance;
   `Contracts.scala` models complete shell state and all SPEC §3.3 errors.
 - `Builtins.scala`, `JsonCodec.scala`, and `CsvCodec.scala` implement the
-  Phase 2 filesystem/navigation boundary with Circe and core Kantan CSV RFC
-  4180 support.
-- `Main.scala` remains a stub; `Executor`, `Ai`, `Repl`, and `Terminal` are
-  still pending.
-- `sbt "testOnly tabbyshell.*"` passes: 192 tests across 11 suites (0 failures,
-  errors, or ignored tests). This proves isolated layers, not end-to-end
-  conformance.
+  Phase 2 filesystem/navigation boundary plus the Phase 3 typed transforms and
+  serialization/save boundary, with Circe and core Kantan CSV RFC 4180 support.
+- `Executor.scala` dispatches all 14 builtins and external commands, with
+  process/AI and warning effects kept behind injectable boundaries.
+  `Ai.scala`, `Terminal.scala`, `Repl.scala`, `Cli.scala`, and `Main.scala`
+  complete the OpenRouter, JLine, Decline, and application-launcher edges.
+- `sbt "testOnly tabbyshell.*"` passes: 239 tests across 18 suites (0 failures,
+  errors, or ignored tests), and all 50 public YAML cases pass through the
+  assembled Scala application.
 
 ## Delivery sequence
 
@@ -111,7 +113,7 @@ format-specific logic duplicated in their command functions.
 **Exit criterion:** all filesystem commands use state rather than
 `user.dir`/ambient cwd, and the `cd` YAML cases pass.
 
-### 5. Implement typed pipeline transforms
+### 5. Implement typed pipeline transforms — completed 2026-09-04
 
 1. Implement shared table/record access helpers that preserve column order and
    generate `TypeMismatch`/`MissingColumn` consistently.
@@ -133,7 +135,7 @@ format-specific logic duplicated in their command functions.
 **Exit criterion:** every built-in in SPEC §§5.6–5.12 has exact error behavior
 and composes correctly in a pipeline.
 
-### 6. Implement serialization commands and saving
+### 6. Implement serialization commands and saving — completed 2026-09-04
 
 1. Implement `to json` and `to csv` using the codecs from step 3, with strict
    format validation and `TypeMismatch` for non-table CSV input.
@@ -147,7 +149,7 @@ and composes correctly in a pipeline.
 
 **Exit criterion:** all `to`/`save` YAML cases and local codec round-trips pass.
 
-### 7. Add external-command execution and AI formatting
+### 7. Add external-command execution and AI formatting — completed 2026-09-04
 
 1. Implement external command execution for non-builtin heads using
    `ProcessBuilder` in `state.cwd`; pass only parsed literal arguments and
@@ -170,7 +172,7 @@ and composes correctly in a pipeline.
 **Exit criterion:** external failure has the mandated error, and the disabled
 AI fallback passes without network access.
 
-### 8. Build the executor and command registry
+### 8. Build the executor and command registry — completed 2026-09-04
 
 1. Create a builtin dispatch table containing exactly the 14 SPEC commands.
 2. Implement the pipeline interpreter: start with `Value.Null`, execute commands
@@ -185,7 +187,7 @@ AI fallback passes without network access.
 **Exit criterion:** a pipeline can be evaluated entirely through a typed,
 side-effect-bounded API.
 
-### 9. Implement terminal, REPL, and CLI entry points
+### 9. Implement terminal, REPL, and CLI entry points — completed 2026-09-04
 
 0. Consider using jline for convenient input from console
 1. Add `Terminal.scala` as a narrow JLine-backed stdout/stderr/prompt and input

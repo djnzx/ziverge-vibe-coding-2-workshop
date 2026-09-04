@@ -16,6 +16,7 @@ built, tested, and organised.
 | kantan.csv   | 0.12.0  | RFC 4180 parsing and quoting for CSV input/output   |
 | fansi        | 0.5.1   | every ANSI escape in SPEC §6.6                     |
 | JLine        | 4.4.2   | interactive terminal, line editing, and history    |
+| Decline      | 2.6.2   | strict command-line parsing for application modes  |
 | MUnit        | 1.3.6   | example-based tests                                |
 | ScalaCheck   | 1.20.0  | property-based tests, via munit-scalacheck 1.3.1   |
 

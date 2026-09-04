@@ -32,6 +32,7 @@ lazy val root = (project in file("."))
       "io.github.kantan-scala" %% "kantan.csv" % "0.12.0",
       "com.lihaoyi"    %% "fansi"            % "0.5.1",
       "org.jline"       % "jline"            % "4.4.2",
+      "com.monovore"   %% "decline"          % "2.6.2",
       "org.scalameta"  %% "munit"            % "1.3.6"  % Test,
       "org.scalameta"  %% "munit-scalacheck" % "1.3.1"  % Test,
       "org.scalacheck" %% "scalacheck"       % "1.20.0" % Test
