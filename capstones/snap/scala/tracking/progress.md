@@ -88,16 +88,48 @@ Landed 2026-09-04. `sbt "testOnly snap.OtTest snap.OtPropertyTest"` reports
 
 ## Phase 6 — Repository JSON and validation (§4.1, §4.5, §3.5)
 
-- [ ] Explicit circe conversion — no derived codecs; unknown fields rejected
-- [ ] Duplicate JSON keys rejected by a dedicated pass (circe's AST silently keeps the last)
-- [ ] Base64 `content` alphabet and padding checked before decoding
-- [ ] Canonical serialization: two-space indent, trailing LF, §4.1 field order
-- [ ] §4.5's six passes run in order, with the replay pass wired to Phase 7
-- [ ] Structural patch equality compares parsed values, so whitespace and key order do not matter
-- [ ] §3.5 dot collision fails as corruption before any write
-- [ ] `known` implements §4.1's materializable definition, including versions that are neither the frontier nor a patch result
-- [ ] Property: `parse ∘ serialize == id`; serialization is a fixpoint
-- [ ] Rejection properties: middle-patch deletion, renumbering, unreachable patches, and cycles are all `Left`
+Landed 2026-09-05. `sbt "testOnly snap.RepositoryJsonTest snap.RepositoryJsonPropertyTest snap.ValidationTest snap.ValidationPropertyTest"` reports
+`Total 46, Failed 0` (20 + 3 + 18 + 5). Full suite: `sbt "testOnly snap.*"` reports `Total 225, Failed 0`. `sbt assembly` still builds the JAR.
+`../verify --lang scala` still reports `28 failed, 0 passed` — expected, since `Cli.scala` is still the Phase 0 stub; this phase's four acceptance files
+(`15-repository-validation.yaml`, `23-strict-validation-matrix.yaml`, `27-history-canonicality.yaml`, `16-dot-collision.yaml`) are exercised at the unit level
+against the exact scenarios those YAML files use, so passing them today is the evidence Phase 11's CLI wiring will make the acceptance cases pass too.
+
+- [x] Explicit circe conversion — no derived codecs; unknown fields rejected at every object level (repository, patch, change, edit operation) —
+      `RepositoryJson.parse`, one `rejectUnknown` example per level in `RepositoryJsonTest`
+- [x] Duplicate JSON keys rejected by a dedicated raw-text scanner (`RepositoryJson.DuplicateKeys`) run after circe confirms syntactic validity — circe's AST
+      silently keeps the last value and reports nothing, so the scan cannot be skipped
+- [x] Base64 `content` checked by decoding then re-encoding and comparing to the original text — catches non-canonical encodings
+      `java.util.Base64.getDecoder` alone accepts (unused low bits in the final character), not just bad alphabet/padding
+- [x] Canonical serialization: two-space indent, trailing LF, §4.1's `format`/`frontier`/`patches` and per-patch/per-change field order — hand-built
+      `RepositoryJson.serialize`, independent of `circe.Printer`'s own formatting choices
+- [x] §4.5's six passes: pass 1 (schema) in `RepositoryJson.parse`; passes 2–6 in `Validation.validate`, in order — patch sorting and one-value-per-dot,
+      base closure and the revision formula, acyclic causality (Kahn's-algorithm ready-set walk), every change against its materialized exact base, and
+      frontier closure (`unreachable patch`, and every base component within the frontier)
+- [x] Pass 2's other half — contiguous per-author revisions — is not a separate scan: `checkBaseClosure`'s `revision = base[author] + 1` plus its
+      base-existence check force it by induction down to revision 1, documented at the call site rather than duplicated as code
+- [x] Passes 5 and 6 share a **placeholder** materializer (`Validation.materialize`): selects a version's causal closure, applies patches in §6.1 ready
+      order, with **no** namespace or OT conflict resolution. Correct for every base this phase's tests need (empty or a single linear chain); Phase 7
+      replaces it with `Replay.materialize` and only the two call sites change — documented in the module doc comment, not hidden
+- [x] `Text.scala` split into `validateShape` (script-only checks, no `oldLength`) and `validate` (`validateShape` plus the base-length comparison), so the
+      JSON schema pass can run the context-free checks before any tree exists — pure refactor, `TextTest`/`TextPropertyTest` still green at `Total 36`
+- [x] Found and fixed a real message-catalog mismatch predating this phase: `Text`'s under-consume error said "does not consume all old content";
+      `15-repository-validation.yaml` asserts the substring "does not consume old content" (no "all"). Would have failed the acceptance suite the moment
+      Phase 11 wired a CLI to it — caught here by writing the phase's tests directly from the YAML fixtures instead of re-deriving expected text
+- [x] Structural patch equality compares parsed values: `Patch`'s case-class equality already operates on typed fields, so whitespace and JSON key order
+      never cause a false collision — no bespoke comparison needed, `dotCollision` examples in `ValidationTest`
+- [x] §3.5 dot collision (`Validation.dotCollision`) fails as `patch collision: <author> revision <n>` before any write — exact string
+      `16-dot-collision.yaml` asserts; wiring into `merge`/`diff --repo` is Phase 11's job
+- [x] `known` implements §4.1's materializable definition (every selected patch's revisions 1..n present, and the selected set contains the complete base
+      of every selected patch), including a version that is neither the frontier nor a patch result — `ValidationTest`
+- [x] Property: `parse(serialize(repo)) == repo` for generated schema-valid repositories; serialization is a fixpoint
+      (`serialize(parse(serialize(repo))) == serialize(repo)`) — `RepositoryJsonPropertyTest`
+- [x] Rejection properties over a generated causally-simple repository (independent per-author linear `put` chains — deliberately short of Phase 7's
+      "valid causal patch graph" generator, since this phase's placeholder materializer cannot resolve a real concurrent conflict): deleting a non-last
+      patch, renumbering a revision without its base, appending a patch beyond the frontier, and a two-contributor mutual cycle are all `Left` —
+      `ValidationPropertyTest`
+- [x] Mutation-checked (`Validation.scala`): disabling the acyclic check, the `put`/`text` no-op check, the base-closure missing-patch check, or the
+      frontier unreachable-patch check each fail at least one test (reverted after confirming, 2026-09-05); a mutation of `RepositoryJson`'s message-escaping
+      (`\n` written raw instead of `\\n`) fails both the example test and the round-trip property, confirming the property has teeth
 
 ## Phase 7 — Deterministic replay (§6.1, §6.2, §6.4, §6.5)
 

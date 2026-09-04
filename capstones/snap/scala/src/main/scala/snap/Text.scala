@@ -77,12 +77,15 @@ object Text:
       case EditOp.Delete(_)     => false
       case EditOp.Insert(toks)  => toks.nonEmpty
 
-  /** SPEC §4.4 — positive counts within [[Limits.maxSafeInteger]]; no adjacent operations of the same kind; no empty insert; every inserted token nonempty and
-    * free of an internal LF; the script consumes exactly `oldLength` old tokens with no implicit trailing retain; the result is a canonical token sequence:
-    * every token but possibly the last ends in LF.
+  /** SPEC §4.4 — everything about a script that is decidable from the script alone, with no `oldLength` in scope: positive counts within
+    * [[Limits.maxSafeInteger]]; no adjacent operations of the same kind; no empty insert; every inserted token nonempty and free of an internal LF; every token
+    * but possibly the last ends in LF. Returns the count of old tokens the script consumes, which [[validate]] compares against `oldLength`.
+    *
+    * Split out of [[validate]] so RepositoryJson's schema pass (§4.5 pass 1, no materialized base tree yet) can run these context-free checks at parse time,
+    * leaving only the `oldLength` comparison for the pass that has a tree to measure.
     */
-  def validate(script: Vector[EditOp], oldLength: Int): Either[SnapError, Unit] =
-    if script.isEmpty then if oldLength == 0 then Right(()) else Left(invalid("must have one operation"))
+  def validateShape(script: Vector[EditOp]): Either[SnapError, Long] =
+    if script.isEmpty then Right(0L)
     else
       val lastEmitting = lastEmittingIndex(script)
 
@@ -116,9 +119,18 @@ object Text:
                   case Some(err) => Left(err)
                   case None      => loop(index + 1, consumed)
 
-      loop(0, 0L).flatMap: consumed =>
+      loop(0, 0L)
+
+  /** SPEC §4.4 — [[validateShape]] plus the one check that needs a materialized base: the script MUST consume exactly `oldLength` old tokens, with no implicit
+    * trailing retain. An empty script against a nonempty `oldLength` reports the same `must have one operation` message the JSON layer uses for a multi-key
+    * operation object — both mean "this script has no operation that could possibly be valid here".
+    */
+  def validate(script: Vector[EditOp], oldLength: Int): Either[SnapError, Unit] =
+    if script.isEmpty && oldLength != 0 then Left(invalid("must have one operation"))
+    else
+      validateShape(script).flatMap: consumed =>
         if consumed > oldLength then Left(invalid("consumes beyond old content"))
-        else if consumed < oldLength then Left(invalid("does not consume all old content"))
+        else if consumed < oldLength then Left(invalid("does not consume old content"))
         else Right(())
 
   /** SPEC §4.4 — apply a script to `old`'s tokens, producing the result's tokens. Validates first: an invalid script is never partially applied. */

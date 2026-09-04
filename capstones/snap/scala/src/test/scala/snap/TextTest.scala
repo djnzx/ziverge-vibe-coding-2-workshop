@@ -62,7 +62,7 @@ class TextTest extends munit.FunSuite:
     assert(Text.validate(Vector(EditOp.Retain(2)), 1).left.exists(_.detail.matches(".+consumes beyond old content")))
 
   test("a script that retains less than the old length does not consume it all"):
-    assert(Text.validate(Vector(EditOp.Delete(1)), 2).left.exists(_.detail.matches(".+does not consume all old content")))
+    assert(Text.validate(Vector(EditOp.Delete(1)), 2).left.exists(_.detail.matches(".+does not consume old content")))
 
   test("a zero count is not a positive safe integer"):
     assert(Text.validate(Vector(EditOp.Retain(0)), 0).left.exists(_.detail.matches(".+positive safe integer")))
