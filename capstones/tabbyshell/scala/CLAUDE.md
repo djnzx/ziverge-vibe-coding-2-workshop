@@ -17,6 +17,15 @@ write is "for *any* X, …", it is a ScalaCheck property, not an example. If it 
 deserves one of each: the property for the invariant, the example to pin the
 case a reader will look up.
 
+**Every parser needs rejection properties, not just round-trips.** A property that
+only says "valid input parses correctly" is satisfied by a parser that accepts
+everything. Pair each grammar with properties naming what it must *refuse*, and one
+meta-property that every rejection carries the SPEC §3.3 message shape.
+
+**Prove a property suite has teeth by mutating the code.** Break an invariant on
+purpose, confirm properties fail, revert. A mutation nothing catches means the
+properties are decorative.
+
 Good candidates for properties in this codebase:
 
 - round-trips — source text → AST → source text; `Value` → `to json` → `open`

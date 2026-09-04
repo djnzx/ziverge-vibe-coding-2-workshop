@@ -246,3 +246,84 @@ class ParserPropertyTest extends munit.ScalaCheckSuite:
       Parser.parse(s) match
         case Right(_)                       => true
         case Left(ShellError.Parse(_, col)) => col >= 1 && col <= s.length + 1
+
+  // --- rejection ---
+  //
+  // The totality properties above only say `parse` returns *something*. These say what it
+  // must refuse: a parser that accepted every input would satisfy totality and fail here.
+
+  private def isRejected(input: String): Boolean = Parser.parse(input) match
+    case Left(ShellError.Parse(_, _)) => true
+    case Right(_)                     => false
+
+  /** Characters the SPEC 3.1 grammar has no production for. */
+  private val notInGrammar: Gen[Char] = Gen.oneOf("&;$(){}[]@^*+,:?!`".toSeq)
+
+  /** Any letter that is not a supported escape (`n`, `t`; `"` and `\\` are not letters). */
+  private val badEscapeChar: Gen[Char] = Gen.oneOf("abcdefghijklmopqrsuvwxyz".toSeq)
+
+  /** Letters that begin no filesize unit, so `<digits><letter>` can never be a filesize. */
+  private val nonUnitLetter: Gen[Char] = Gen.oneOf("acdefhijlnopqrstuvwxyz".toSeq)
+
+  private val alphaNum: Gen[String] = Gen.listOf(Gen.alphaNumChar).map(_.mkString)
+
+  property("an unterminated double-quoted string is rejected"):
+    forAll(alphaNum)(body => isRejected("x \"" + body))
+
+  property("an unterminated single-quoted string is rejected"):
+    forAll(alphaNum)(body => isRejected("x '" + body))
+
+  property("an unsupported escape inside a double-quoted string is rejected"):
+    forAll(alphaNum, badEscapeChar): (body, bad) =>
+      isRejected("x \"" + body + "\\" + bad + "\"")
+
+  property("a trailing pipe is rejected"):
+    forAll(genPipeline)(cs => isRejected(source(cs) + " |"))
+
+  property("a leading pipe is rejected"):
+    forAll(genPipeline)(cs => isRejected("| " + source(cs)))
+
+  property("an empty command between two pipes is rejected"):
+    forAll(genPipeline)(cs => isRejected(source(cs) + " | | length"))
+
+  property("a character outside the grammar is rejected"):
+    forAll(genPipeline, notInGrammar)((cs, c) => isRejected(source(cs) + c.toString))
+
+  property("a number immediately followed by ident characters is rejected"):
+    forAll(Gen.choose(0L, 100000L), nonUnitLetter, alphaNum): (n, letter, rest) =>
+      isRejected(s"x $n$letter$rest")
+
+  property("an unknown filesize unit is rejected"):
+    forAll(Gen.choose(0L, 100000L), Gen.oneOf("tb", "pb", "bb", "kbs", "q")): (n, unit) =>
+      isRejected(s"x $n$unit")
+
+  property("a long flag with `=` but no literal is rejected"):
+    forAll(bareIdent)(name => isRejected(s"x --$name="))
+
+  property("a bare double dash is rejected"):
+    forAll(genPipeline)(cs => isRejected(source(cs) + " --"))
+
+  /** Every rejection path, not just the ones with a dedicated property above. */
+  private val invalidInput: Gen[String] = Gen.oneOf(
+    alphaNum.map(body => "x \"" + body),
+    alphaNum.map(body => "x '" + body),
+    genPipeline.map(cs => source(cs) + " |"),
+    genPipeline.map(cs => "| " + source(cs)),
+    for cs <- genPipeline; c <- notInGrammar yield source(cs) + c,
+    for n <- Gen.choose(0L, 100000L); u <- Gen.oneOf("tb", "pb", "q") yield s"x $n$u",
+    bareIdent.map(name => s"x --$name=")
+  )
+
+  private val specErrorShape = """^parse error: .+ at column \d+$""".r
+
+  property("every rejection reports the SPEC 3.3 message shape"):
+    forAll(invalidInput): input =>
+      Parser.parse(input) match
+        case Right(_)  => false
+        case Left(err) => specErrorShape.matches(err.message)
+
+  property("every rejection points at a column inside the input"):
+    forAll(invalidInput): input =>
+      Parser.parse(input) match
+        case Right(_)                       => false
+        case Left(ShellError.Parse(_, col)) => col >= 1 && col <= input.length + 1

@@ -96,6 +96,23 @@ Current parser properties:
 | totality under grammar fuzz       | same, for strings built from grammar fragments            |
 | error column bounds               | a reported column is always within the input              |
 
+Totality only says the parser returns *something*. A second group says what it must
+**refuse** — a parser that accepted every input would satisfy totality and fail all of
+these:
+
+| Rejection property                | Must be a parse error                                     |
+|-----------------------------------|-----------------------------------------------------------|
+| unterminated string               | `x "abc`, `x 'abc`                                        |
+| unsupported escape                | `x "a\\qb"` — only `\\" \\\\ \\n \\t` are escapes                     |
+| pipe with a missing operand       | trailing `|`, leading `|`, `… | | length`                  |
+| character outside the grammar     | any of `&;$(){}[]@^*+,:?!\`` appended to a valid pipeline  |
+| token not ended                   | `5abc` — a literal may not run into ident characters      |
+| unknown filesize unit             | `5tb`, `5q`, `5bb` — only the 7 SPEC units parse          |
+| valued flag with no literal       | `--name=`                                                 |
+| bare double dash                  | `--`                                                      |
+| SPEC §3.3 message shape           | every rejection matches `parse error: … at column <n>`    |
+| rejection column bounds           | every rejection points inside its input                   |
+
 Generators emit a token's **source text together with the `Arg` it must parse
 to**, so a whole pipeline can be generated next to its expected AST. That is
 what makes the round-trip property possible without a separate pretty-printer.
@@ -103,6 +120,11 @@ what makes the round-trip property possible without a separate pretty-printer.
 The totality and out-of-range properties are not decoration: they caught a real
 `NumberFormatException` on `x 99999999999999999999`, which is now a parse error
 (and is pinned by SPEC §3.1).
+
+These are checked by mutation, not taken on faith: removing the `tokenEnd` guard from
+`Parser.scala` (so a literal may run into ident characters) is caught by 11 properties,
+4 of them rejection properties. A property suite that survives a mutation like that is
+not testing anything.
 
 Two generators are worth knowing about. `fuzz` builds strings from *grammar
 fragments* (`"`, `\\`, `|`, `#`, `5kb`, `999999999999999999999`, …) rather than
