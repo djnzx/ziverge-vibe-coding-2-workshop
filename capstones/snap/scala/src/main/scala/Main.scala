@@ -10,6 +10,7 @@ package snap
   */
 object Main:
   def main(args: Array[String]): Unit =
-    val status = Cli.run(args.toVector, Streams.standard)
-    Streams.standard.flush()
+    val streams = Streams.standard
+    val status  = Cli.run(args.toVector, streams)
+    streams.flush()
     sys.exit(status)

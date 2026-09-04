@@ -88,6 +88,21 @@ object Replay:
   private def isReady(patch: Patch, integrated: Set[Dot]): Boolean =
     patch.base.components.forall((author, revision) => revision <= 0 || integrated.contains(Dot(author, revision)))
 
+  /** Patches in the deterministic order in which they are integrated to reach `target`. Command rendering uses this same causal order as replay rather than
+    * inventing a separate version sort.
+    */
+  def integrationOrder(all: Vector[Patch], target: Version): Either[SnapError, Vector[Patch]] =
+    select(all, target).flatMap: selected =>
+      @tailrec
+      def loop(remaining: Vector[Patch], integrated: Set[Dot], result: Vector[Patch]): Either[SnapError, Vector[Patch]] =
+        if remaining.isEmpty then Right(result)
+        else
+          remaining.filter(patch => isReady(patch, integrated)).minOption(using readyOrdering) match
+            case None       => Left(invalid("cyclic or incomplete patch history"))
+            case Some(next) => loop(remaining.filterNot(_.dot == next.dot), integrated + next.dot, result :+ next)
+
+      loop(selected, Set.empty, Vector.empty)
+
   // ---- §6.2/§6.4 — integrating one patch --------------------------------------------
 
   private def authoredResults(base: Tree, patch: Patch): Either[SnapError, Vector[(Change, Option[FileBytes])]] =

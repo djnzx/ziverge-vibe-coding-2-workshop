@@ -183,7 +183,7 @@ Workspace boundary landed 2026-09-05. `sbt "testOnly snap.WorkspaceTest"` report
 - [x] `scan` uses `NOFOLLOW_LINKS` and rejects symlinks and FIFOs by name — the two exact-message examples in `snap.WorkspaceTest`
 - [x] `install` replaces blocking files, creates directories, and prunes newly empty ones — `snap.WorkspaceTest` covers file-to-directory replacement, pruning, and preservation of `.snap/`
 - [x] `writeRepository` uses a same-directory temp file and `ATOMIC_MOVE`, leaving no leftover — `snap.WorkspaceTest` checks its parsed replacement and directory entries
-- [ ] Validate-before-mutate ordering enforced for `merge` and `revert` — Phase 11 owns the still-absent command handlers; it must compose `scan`, validation, `Replay.materialize`, `install`, then `writeRepository` in that order
+- [x] Validate-before-mutate ordering enforced for `merge` and `revert` — Phase 11 validates and materializes both histories before scanning, then installs before the atomic repository replacement; focused command and public dirty-tree cases cover the no-mutation path
 - [x] Property: `scan ∘ install == id` for generated prefix-free trees — `snap.WorkspaceTest`
 - [x] Every test runs in a temporary directory; nothing reads the process cwd — `snap.WorkspaceTest`'s shared temporary-directory fixture
 
@@ -214,18 +214,20 @@ Presentation boundary landed 2026-09-05. `sbt "testOnly snap.PresentationTest"` 
 
 ## Phase 11 — Diff rendering and commands (§7.1–§7.8)
 
-- [ ] `DiffRender` emits `/dev/null` headers, `@@ -1,<n> +1,<m> @@` starting at 1 on both sides, and `\ No newline at end of file`
-- [ ] Binary changes print the single `Binary files …` line
-- [ ] `init`, `config`, `status`, `log`, `commit`, `diff`, `revert`, `merge` implemented
-- [ ] `log` escapes backslash, tab, and LF in that order
-- [ ] `commit` chooses `text` versus `put` by §7.5's rule
-- [ ] `diff --repo` compares shared dots and fails as corrupt on a mismatch
-- [ ] `revert` prints the **new** version and never moves the frontier backward
-- [ ] `merge` prints only warnings absent from the pre-merge local replay
-- [ ] `Cli` implements §7's positional grammar; `diff` uses the `usage: snap diff …` family, everything else `invalid command or arguments`
-- [ ] `SNAP_COLOR` resolved before dispatch
-- [ ] Exit codes: 0 success, 1 expected error, 2 unanticipated only
-- [ ] `../verify --lang scala` passes 24 of 28 — all but `12-http-server`, `13-http-client`, `26-portability-and-failure-safety`, and `28-terminal-presentation`, which each need Phase 12
+Command boundary landed 2026-09-05. `sbt "testOnly snap.*"` reports `Total 290, Failed 0`, including the new `snap.DiffRenderTest` and `snap.CliTest` suites. The Phase 11 public workflows pass; the four HTTP-serving/client cases remain for Phase 12.
+
+- [x] `DiffRender` emits `/dev/null` headers, `@@ -1,<n> +1,<m> @@` starting at 1 on both sides, and `\ No newline at end of file`
+- [x] Binary changes print the single `Binary files …` line
+- [x] `init`, `config`, `status`, `log`, `commit`, `diff`, `revert`, `merge` implemented
+- [x] `log` escapes backslash, tab, and LF in that order
+- [x] `commit` chooses `text` versus `put` by §7.5's rule
+- [x] `diff --repo` compares shared dots and fails as corrupt on a mismatch
+- [x] `revert` prints the **new** version and never moves the frontier backward
+- [x] `merge` prints only warnings absent from the pre-merge local replay
+- [x] `Cli` implements §7's positional grammar; `diff` uses the `usage: snap diff …` family, everything else `invalid command or arguments`
+- [x] `SNAP_COLOR` resolved before dispatch
+- [x] Exit codes: 0 success, 1 expected error, 2 unanticipated only
+- [x] `../verify --lang scala` passes 24 of 28 — all but `12-http-server`, `13-http-client`, `26-portability-and-failure-safety`, and `28-terminal-presentation`, which each need Phase 12
 
 ## Phase 12 — HTTP (§7.9, §9)
 
@@ -242,9 +244,9 @@ Presentation boundary landed 2026-09-05. `sbt "testOnly snap.PresentationTest"` 
 
 Unchecked until each command has actually been run and its output read.
 
-- [ ] `sbt scalafmtAll` leaves no diff
-- [ ] `sbt "testOnly snap.*"` green — record the count, not just "passed"
-- [ ] `sbt assembly` produces `target/scala-3.9.0/snap-assembly-0.1.0.jar`
+- [x] `sbt scalafmtAll` leaves no diff
+- [x] `sbt "testOnly snap.*"` green — `Total 290, Failed 0`
+- [x] `sbt assembly` produces `target/scala-3.9.0/snap-assembly-0.1.0.jar`
 - [ ] `../verify --lang scala` passes **28 of 28**
 - [ ] Manual: `SNAP_COLOR=auto` on a real terminal, with and without `NO_COLOR`
 - [ ] Manual: Ctrl-C on `snap --serve` exits 0
